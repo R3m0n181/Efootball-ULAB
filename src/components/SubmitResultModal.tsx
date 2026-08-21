@@ -6,7 +6,6 @@ import {
   Upload,
   Loader2,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { Match, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
 import { compressScreenshot } from '../utils/imageCompressor';
@@ -120,25 +119,12 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
     };
 
     onSaveMatch(updated);
-
-    // Trigger celebration confetti
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#10b981', '#06b6d4', '#f59e0b', '#8b5cf6'],
-      });
-    } catch {
-      // benign fallback
-    }
-
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border border-slate-800 rounded-xl w-full max-w-lg shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-[#0f1219] border border-slate-700/80 rounded-xl w-full max-w-lg shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Modal Header */}
         <div className="p-3 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
           <div className="flex items-center gap-2">

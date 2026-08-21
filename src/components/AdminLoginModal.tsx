@@ -55,9 +55,9 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="bg-[#0f1219] border border-slate-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden"
+        className="bg-[#0f1219] border border-slate-700/80 w-full max-w-md rounded-2xl shadow-2xl shadow-black/80 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

@@ -30,6 +30,10 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { ShareFixtureCardModal } from './components/ShareFixtureCardModal';
 import { TournamentSettingsModal } from './components/TournamentSettingsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import {
+  SubmissionSuccessPopup,
+  SubmittedMatchSummary,
+} from './components/SubmissionSuccessPopup';
 
 export default function App() {
   const [tournamentState, setTournamentState] = useState<StoredState>(() =>
@@ -57,6 +61,10 @@ export default function App() {
   const [selectedMatchForShare, setSelectedMatchForShare] = useState<Match | null>(null);
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+
+  // Submit Result Success Notification State
+  const [isSuccessPopupOpen, setIsSuccessPopupOpen] = useState(false);
+  const [submittedMatchInfo, setSubmittedMatchInfo] = useState<SubmittedMatchSummary | null>(null);
 
   // Admin Auth Gate State
   const [isAdminLoginModalOpen, setIsAdminLoginModalOpen] = useState(false);
@@ -112,8 +120,8 @@ export default function App() {
     setPendingAdminAction(null);
   };
 
+  // Stacked Admin Auth Gate: Opens over existing modal without destroying underlying view
   const handleOpenLoginModal = (reason?: string, nextAction?: () => void) => {
-    closeAllModals();
     setLoginPromptReason(
       reason || 'Admin authentication is required to access league controls.'
     );
@@ -135,7 +143,8 @@ export default function App() {
   const handleAdminLoginSuccess = (user: AdminUser) => {
     setAdminUser(user);
     const nextAction = pendingAdminAction;
-    closeAllModals();
+    setIsAdminLoginModalOpen(false);
+    setPendingAdminAction(null);
     if (nextAction) {
       nextAction();
     }
@@ -156,6 +165,18 @@ export default function App() {
       matches: newMatches,
     }));
     closeAllModals();
+
+    const homeTeam = teams.find((t) => t.id === updatedMatch.homeTeamId);
+    const awayTeam = teams.find((t) => t.id === updatedMatch.awayTeamId);
+
+    setSubmittedMatchInfo({
+      round: updatedMatch.round,
+      homeTeamName: homeTeam?.clubName || 'Home Team',
+      awayTeamName: awayTeam?.clubName || 'Away Team',
+      homeScore: updatedMatch.homeScore,
+      awayScore: updatedMatch.awayScore,
+    });
+    setIsSuccessPopupOpen(true);
 
     try {
       await updateMatchInCloud(updatedMatch, matches);
@@ -187,7 +208,6 @@ export default function App() {
 
   const handleOpenSubmitForMatch = (match: Match | null) => {
     requireAdminAuth(() => {
-      closeAllModals();
       setSelectedMatchForSubmit(match);
       setIsSubmitModalOpen(true);
     }, 'Admin login is mandatory to submit or edit match results.');
@@ -201,19 +221,27 @@ export default function App() {
   };
 
   const handleOpenShareForMatch = (match: Match) => {
-    closeAllModals();
     setSelectedMatchForShare(match);
     setIsShareModalOpen(true);
   };
 
   const handleOpenMatchDetail = (match: Match) => {
-    closeAllModals();
+    // Keep selectedTeamForDetail open so MatchDetailModal overlays gracefully
     setSelectedMatchForDetail(match);
   };
 
+  const handleCloseMatchDetail = () => {
+    setSelectedMatchForDetail(null);
+  };
+
   const handleOpenTeamDetail = (team: Team) => {
-    closeAllModals();
+    setSelectedMatchForDetail(null);
     setSelectedTeamForDetail(team);
+  };
+
+  const handleCloseTeamDetail = () => {
+    setSelectedTeamForDetail(null);
+    setSelectedMatchForDetail(null);
   };
 
   const handleResetSchedule = async (isDouble: boolean) => {
@@ -366,16 +394,13 @@ export default function App() {
       </footer>
 
       {/* MODALS */}
-      <AdminLoginModal
-        isOpen={isAdminLoginModalOpen}
-        onClose={closeAllModals}
-        onSuccess={handleAdminLoginSuccess}
-        actionReason={loginPromptReason}
-      />
-
+      {/* Primary Workspaces (Exclusive) */}
       <SubmitResultModal
         isOpen={isSubmitModalOpen}
-        onClose={closeAllModals}
+        onClose={() => {
+          setIsSubmitModalOpen(false);
+          setSelectedMatchForSubmit(null);
+        }}
         matches={matches}
         teams={teams}
         initialMatch={selectedMatchForSubmit}
@@ -384,10 +409,11 @@ export default function App() {
 
       <MatchDetailModal
         isOpen={!!selectedMatchForDetail}
-        onClose={closeAllModals}
+        onClose={handleCloseMatchDetail}
         match={selectedMatchForDetail}
         teams={teams}
         isAdmin={!!adminUser}
+        parentTeamContext={selectedTeamForDetail}
         onEditMatch={(match) => handleOpenSubmitForMatch(match)}
         onShareMatch={(match) => handleOpenShareForMatch(match)}
         onSelectTeam={(team) => handleOpenTeamDetail(team)}
@@ -396,7 +422,7 @@ export default function App() {
 
       <TeamDetailModal
         isOpen={!!selectedTeamForDetail}
-        onClose={closeAllModals}
+        onClose={handleCloseTeamDetail}
         team={selectedTeamForDetail}
         standingsRow={selectedTeamStandingsRow}
         matches={matches}
@@ -407,7 +433,10 @@ export default function App() {
 
       <ShareFixtureCardModal
         isOpen={isShareModalOpen}
-        onClose={closeAllModals}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setSelectedMatchForShare(null);
+        }}
         match={selectedMatchForShare}
         teams={teams}
       />
@@ -422,6 +451,25 @@ export default function App() {
         onSeedSampleData={handleSeedSampleData}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
+      />
+
+      {/* Stacked Modals (Layered over primary modals) */}
+      <AdminLoginModal
+        isOpen={isAdminLoginModalOpen}
+        onClose={() => {
+          setIsAdminLoginModalOpen(false);
+          setPendingAdminAction(null);
+        }}
+        onSuccess={handleAdminLoginSuccess}
+        actionReason={loginPromptReason}
+      />
+
+      {/* Auto-closing Match Submission Success Floating Popup (Non-blocking toast, no dark overlay) */}
+      <SubmissionSuccessPopup
+        isOpen={isSuccessPopupOpen}
+        onClose={() => setIsSuccessPopupOpen(false)}
+        matchSummary={submittedMatchInfo}
+        durationMs={3500}
       />
     </div>
   );

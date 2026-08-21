@@ -52,8 +52,8 @@ export const ShareFixtureCardModal: React.FC<ShareFixtureCardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border border-slate-800 rounded-xl w-full max-w-md shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-[#0f1219] border border-slate-700/80 rounded-xl w-full max-w-md shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col">
         {/* Header */}
         <div className="p-3 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
           <div className="flex items-center gap-2">

@@ -32,6 +32,7 @@ interface MatchDetailModalProps {
   onSelectTeam: (team: Team) => void;
   onUpdateScreenshot?: (matchId: string, screenshotUrl?: string) => void;
   isAdmin?: boolean;
+  parentTeamContext?: Team | null;
 }
 
 export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
@@ -44,6 +45,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   onSelectTeam,
   onUpdateScreenshot,
   isAdmin = false,
+  parentTeamContext = null,
 }) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -133,11 +135,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
-          className="bg-[#0f1219] border border-slate-800 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col"
+          className="bg-[#0f1219] border border-slate-700/80 rounded-2xl w-full max-w-xl shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header Bar */}
@@ -158,6 +160,15 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
             </div>
 
             <div className="flex items-center gap-1.5">
+              {parentTeamContext && (
+                <button
+                  onClick={onClose}
+                  className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/60 text-[10px] font-semibold transition cursor-pointer"
+                  title={`Back to ${parentTeamContext.clubName}`}
+                >
+                  <span>← Back to {parentTeamContext.clubName}</span>
+                </button>
+              )}
               <button
                 onClick={() => onShareMatch(match)}
                 title="Share Result Card"
@@ -453,7 +464,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
       {/* Lightbox / Fullscreen Image Modal */}
       {isLightboxOpen && activeProofUrl && (
         <div
-          className="fixed inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center p-3 animate-in fade-in"
+          className="fixed inset-0 z-[80] bg-black/95 flex flex-col items-center justify-center p-3 animate-in fade-in"
           onClick={() => setIsLightboxOpen(false)}
         >
           <div className="absolute top-4 right-4 flex items-center gap-2">
