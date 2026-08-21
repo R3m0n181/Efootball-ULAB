@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Search,
   ChevronRight,
-  Shield,
+  ArrowDownAZ,
+  ArrowUpAZ,
+  Trophy,
+  User,
 } from 'lucide-react';
 import { Team, StandingsRow } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -13,46 +16,91 @@ interface TeamsListViewProps {
   onSelectTeam: (team: Team) => void;
 }
 
+type SortOption = 'name-asc' | 'name-desc' | 'rank-asc' | 'manager-asc';
+
 export const TeamsListView: React.FC<TeamsListViewProps> = ({
   teams,
   standings,
   onSelectTeam,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('name-asc');
 
-  const rankMap = new Map<string, StandingsRow>();
-  standings.forEach((s) => rankMap.set(s.team.id, s));
+  const rankMap = useMemo(() => {
+    const map = new Map<string, StandingsRow>();
+    standings.forEach((s) => map.set(s.team.id, s));
+    return map;
+  }, [standings]);
 
-  const filteredTeams = teams.filter(
-    (t) =>
-      t.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.shortCode.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const sortedAndFilteredTeams = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = teams.filter(
+      (t) =>
+        t.clubName.toLowerCase().includes(term) ||
+        t.managerName.toLowerCase().includes(term) ||
+        t.shortCode.toLowerCase().includes(term)
+    );
+
+    return [...filtered].sort((a, b) => {
+      if (sortBy === 'name-asc') {
+        return a.clubName.localeCompare(b.clubName, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'name-desc') {
+        return b.clubName.localeCompare(a.clubName, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'manager-asc') {
+        return a.managerName.localeCompare(b.managerName, undefined, { sensitivity: 'base' });
+      }
+      if (sortBy === 'rank-asc') {
+        const rankA = rankMap.get(a.id)?.rank ?? 999;
+        const rankB = rankMap.get(b.id)?.rank ?? 999;
+        return rankA - rankB;
+      }
+      return a.clubName.localeCompare(b.clubName);
+    });
+  }, [teams, searchTerm, sortBy, rankMap]);
 
   return (
     <div className="space-y-3">
-      {/* Search Header */}
+      {/* Search and Sort Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#0f1219] p-2.5 rounded-xl border border-slate-800">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            id="teams-search-input"
-            type="text"
-            placeholder="Search club (e.g. Bayern Munich, Leverkusen) or player..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
-          />
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-2 max-w-xl">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              id="teams-search-input"
+              type="text"
+              placeholder="Search club (e.g. Bayern Munich, Leverkusen) or player..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] text-slate-400 shrink-0 font-medium">Sort:</span>
+            <select
+              id="teams-sort-select"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="px-2.5 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 transition cursor-pointer"
+            >
+              <option value="name-asc">Team Name (A → Z)</option>
+              <option value="name-desc">Team Name (Z → A)</option>
+              <option value="rank-asc">League Rank (#1 → Last)</option>
+              <option value="manager-asc">Player Name (A → Z)</option>
+            </select>
+          </div>
         </div>
+
         <div className="text-xs text-slate-400 font-medium">
-          Showing <span className="text-white font-bold">{filteredTeams.length}</span> of 21 Participating Teams
+          Showing <span className="text-white font-bold">{sortedAndFilteredTeams.length}</span> of {teams.length} Participating Teams
         </div>
       </div>
 
       {/* Grid of Team Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        {filteredTeams.map((team) => {
+        {sortedAndFilteredTeams.map((team) => {
           const stats = rankMap.get(team.id);
 
           return (
