@@ -1,0 +1,27 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Tournament metadata and nested subcollections
+    match /tournaments/{tournamentId} {
+      allow read, write: if true;
+    }
+    match /tournaments/{tournamentId}/{document=**} {
+      allow read, write: if true;
+    }
+
+    // Teams collection
+    match /teams/{teamId} {
+      allow read, write: if true;
+    }
+
+    // Matches / Fixtures collection
+    match /matches/{matchId} {
+      allow read, write: if true;
+    }
+
+    // Match Proof Screenshots collection (Decoupled high-speed proof store)
+    match /match_proofs/{matchId} {
+      allow read, write: if true;
+    }
+  }
+}

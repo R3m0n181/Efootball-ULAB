@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Tournament": {
+      "title": "Tournament State",
+      "description": "Global tournament document holding configuration, matches, teams, and metadata",
+      "type": "object",
+      "properties": {
+        "teams": {
+          "type": "array",
+          "description": "List of 21 participating teams"
+        },
+        "matches": {
+          "type": "array",
+          "description": "List of fixtures across all rounds"
+        },
+        "config": {
+          "type": "object",
+          "description": "Tournament rules and format"
+        },
+        "byesPerRound": {
+          "type": "object",
+          "description": "Byes map for rounds"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last update"
+        }
+      },
+      "required": ["teams", "matches", "config"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A team participating in the league",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "managerName": { "type": "string" },
+        "clubName": { "type": "string" },
+        "shortCode": { "type": "string" },
+        "logo": { "type": "string" },
+        "color": { "type": "string" },
+        "secondaryColor": { "type": "string" }
+      },
+      "required": ["id", "managerName", "clubName", "shortCode"]
+    },
+    "Match": {
+      "title": "Match",
+      "description": "A fixture / match between two teams",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "round": { "type": "number" },
+        "homeTeamId": { "type": "string" },
+        "awayTeamId": { "type": "string" },
+        "homeScore": { "type": "number" },
+        "awayScore": { "type": "number" },
+        "status": { "type": "string" },
+        "screenshotUrl": { "type": "string" },
+        "notes": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "submittedBy": { "type": "string" }
+      },
+      "required": ["id", "round", "homeTeamId", "awayTeamId", "status"]
+    },
+    "MatchProof": {
+      "title": "Match Proof Screenshot",
+      "description": "Screenshot verification record for a match",
+      "type": "object",
+      "properties": {
+        "matchId": { "type": "string" },
+        "screenshotUrl": { "type": "string" },
+        "uploadedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["matchId"]
+    }
+  },
+  "firestore": {
+    "/tournaments/{tournamentId}": {
+      "schema": "Tournament",
+      "description": "Stores tournament configuration, match fixtures, team data, and live standings"
+    },
+    "/match_proofs/{matchId}": {
+      "schema": "MatchProof",
+      "description": "Stores high-resolution screenshot match proofs"
+    }
+  }
+}
