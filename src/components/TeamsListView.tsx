@@ -142,7 +142,7 @@ export const TeamsListView: React.FC<TeamsListViewProps> = ({
                 </div>
 
                 {/* Season Performance Snapshot */}
-                <div className="bg-[#0a0c10] rounded-lg p-2.5 border border-slate-800/80 mb-3 grid grid-cols-4 gap-1 text-center font-mono">
+                <div className="bg-[#0a0c10] rounded-lg p-2.5 border border-slate-800/80 mb-2.5 grid grid-cols-4 gap-1 text-center font-mono">
                   <div>
                     <div className="text-[9px] text-slate-500 uppercase">Played</div>
                     <div className="text-xs font-bold text-white">{stats?.played ?? 0}</div>
@@ -160,6 +160,30 @@ export const TeamsListView: React.FC<TeamsListViewProps> = ({
                     <div className="text-xs font-bold text-rose-400">{stats?.lost ?? 0}</div>
                   </div>
                 </div>
+
+                {/* Recent Form Pills */}
+                {stats && stats.form.length > 0 && (
+                  <div className="bg-[#0a0c10]/60 rounded-lg px-2.5 py-1.5 border border-slate-800/60 mb-2.5 flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400 font-medium">Recent Form</span>
+                    <div className="flex items-center gap-1">
+                      {stats.recentMatches.map((match, idx) => (
+                        <span
+                          key={idx}
+                          title={`${match.isHome ? 'vs' : '@'} ${match.opponentShortCode} (${match.score})`}
+                          className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold font-mono ${
+                            match.result === 'W'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : match.result === 'D'
+                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                          }`}
+                        >
+                          {match.result}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Action Buttons */}

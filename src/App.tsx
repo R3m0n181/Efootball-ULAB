@@ -105,7 +105,7 @@ export default function App() {
   const { teams, matches, config, byesPerRound } = tournamentState;
 
   const standings = calculateStandings(teams, matches, config);
-  const summary = getTournamentSummary(matches, standings);
+  const summary = getTournamentSummary(matches, standings, teams);
 
   // Close all active modals/popups across the entire application
   const closeAllModals = () => {
@@ -329,6 +329,8 @@ export default function App() {
         totalGoals={summary.totalGoals}
         avgGoals={summary.avgGoals}
         leader={summary.leader}
+        topScoringTeam={summary.topScoringTeam}
+        mostCleanSheetsTeam={summary.mostCleanSheetsTeam}
         adminUser={adminUser}
         isCloudSynced={isCloudSynced}
         onOpenLoginModal={() =>
@@ -337,6 +339,7 @@ export default function App() {
         onLogoutAdmin={handleLogoutAdmin}
         onOpenSubmitModal={() => handleOpenSubmitForMatch(null)}
         onOpenSettingsModal={handleOpenSettingsModal}
+        onSelectTeam={(team) => handleOpenTeamDetail(team)}
       />
 
       {/* Main Content Area */}

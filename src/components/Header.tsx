@@ -3,6 +3,7 @@ import {
   Trophy,
   Calendar,
   Shield,
+  ShieldCheck,
   PlusCircle,
   Settings,
   Flame,
@@ -11,7 +12,7 @@ import {
   LogOut,
   UserCheck,
 } from 'lucide-react';
-import { TournamentConfig, StandingsRow } from '../types';
+import { TournamentConfig, StandingsRow, TeamAttackStat, TeamDefenseStat, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
 import { AdminUser } from '../utils/auth';
 import { LEAGUE_LOGO } from '../assets/leagueLogo';
@@ -25,12 +26,15 @@ interface HeaderProps {
   totalGoals: number;
   avgGoals: string;
   leader: StandingsRow | null;
+  topScoringTeam?: TeamAttackStat | null;
+  mostCleanSheetsTeam?: TeamDefenseStat | null;
   adminUser: AdminUser | null;
   isCloudSynced?: boolean;
   onOpenLoginModal: () => void;
   onLogoutAdmin: () => void;
   onOpenSubmitModal: () => void;
   onOpenSettingsModal: () => void;
+  onSelectTeam?: (team: Team) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,12 +46,15 @@ export const Header: React.FC<HeaderProps> = ({
   totalGoals,
   avgGoals,
   leader,
+  topScoringTeam,
+  mostCleanSheetsTeam,
   adminUser,
   isCloudSynced = true,
   onOpenLoginModal,
   onLogoutAdmin,
   onOpenSubmitModal,
   onOpenSettingsModal,
+  onSelectTeam,
 }) => {
   const progressPercent = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
 
@@ -148,65 +155,161 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Tournament Vital Stats Strip */}
-        <div className="mt-2.5 pt-2.5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          {/* Matches Progress */}
-          <div className="bg-[#0f1219] border border-slate-800 rounded-lg p-2 flex items-center justify-between">
-            <div>
-              <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Matches Played</div>
-              <div className="text-xs sm:text-sm font-bold text-white font-mono">
-                {completedMatches} <span className="text-slate-500">/ {totalMatches}</span>
-              </div>
-            </div>
-            <div className="text-right">
-              <span className="text-xs font-bold text-emerald-400 font-mono">{progressPercent}%</span>
-              <div className="w-14 sm:w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
-                <div
-                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Goals Tally */}
-          <div className="bg-[#0f1219] border border-slate-800 rounded-lg p-2 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
-              <Flame className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Total Goals</div>
-              <div className="text-xs sm:text-sm font-bold text-white font-mono">
-                {totalGoals} <span className="text-[10px] text-slate-500 font-normal">({avgGoals}/gm)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Table Leader: Club Name First, Player Below */}
-          <div className="bg-[#0f1219] border border-slate-800 rounded-lg p-2 flex items-center gap-2.5 col-span-2 sm:col-span-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
-              <Trophy className="w-3.5 h-3.5" />
-            </div>
-            <div className="min-w-0 flex-1 flex items-center justify-between">
+        <div className="mt-2.5 pt-2.5 border-t border-slate-800/80 space-y-2">
+          {/* Upper Metrics Grid: Matches Progress, Goals Tally, League Leader */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Matches Progress */}
+            <div className="bg-[#0f1219] border border-slate-800 rounded-lg p-2.5 flex items-center justify-between">
               <div>
-                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">League Leader</div>
-                <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5">
-                  {leader && completedMatches > 0 ? (
-                    <>
-                      <TeamLogo team={leader.team} size="xs" />
-                      <span className="text-emerald-400">{leader.team.clubName}</span>
-                      <span className="text-slate-400 text-xs font-normal">({leader.team.managerName})</span>
-                    </>
-                  ) : (
-                    <span className="text-slate-400 text-xs">Season Initialized (0 Matches Played)</span>
-                  )}
+                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Matches Played</div>
+                <div className="text-xs sm:text-sm font-bold text-white font-mono">
+                  {completedMatches} <span className="text-slate-500">/ {totalMatches}</span>
                 </div>
               </div>
-              {leader && completedMatches > 0 && (
-                <div className="text-right pl-2 font-mono">
-                  <div className="text-xs font-bold text-emerald-400">{leader.points} PTS</div>
-                  <div className="text-[10px] text-slate-400">GD {leader.goalDifference > 0 ? `+${leader.goalDifference}` : leader.goalDifference}</div>
+              <div className="text-right">
+                <span className="text-xs font-bold text-emerald-400 font-mono">{progressPercent}%</span>
+                <div className="w-14 sm:w-16 h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
-              )}
+              </div>
+            </div>
+
+            {/* Goals Tally */}
+            <div className="bg-[#0f1219] border border-slate-800 rounded-lg p-2.5 flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <Flame className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <div className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Total Goals</div>
+                <div className="text-xs sm:text-sm font-bold text-white font-mono">
+                  {totalGoals} <span className="text-[10px] text-slate-500 font-normal">({avgGoals}/gm)</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Leader: Club Name First, Player Below */}
+            <div
+              onClick={() => leader && onSelectTeam && onSelectTeam(leader.team)}
+              className={`bg-[#0f1219] border border-slate-800 rounded-lg p-2.5 flex items-center gap-2.5 col-span-2 sm:col-span-2 ${
+                leader && completedMatches > 0 && onSelectTeam
+                  ? 'hover:border-emerald-500/50 hover:bg-[#121722] cursor-pointer transition'
+                  : ''
+              }`}
+            >
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <Trophy className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1 flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">League Leader</span>
+                    {leader && completedMatches > 0 && (
+                      <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">1ST</span>
+                    )}
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5 mt-0.5">
+                    {leader && completedMatches > 0 ? (
+                      <>
+                        <TeamLogo team={leader.team} size="xs" />
+                        <span className="text-emerald-400 hover:underline">{leader.team.clubName}</span>
+                        <span className="text-slate-400 text-xs font-normal">({leader.team.managerName})</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-normal">Season Initialized (0 Matches Played)</span>
+                    )}
+                  </div>
+                </div>
+                {leader && completedMatches > 0 && (
+                  <div className="text-right pl-2 font-mono shrink-0">
+                    <div className="text-xs font-bold text-emerald-400">{leader.points} PTS</div>
+                    <div className="text-[10px] text-slate-400">GD {leader.goalDifference > 0 ? `+${leader.goalDifference}` : leader.goalDifference}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Under League Leader: Top Scoring Team & Most Clean Sheets Team */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* Top Scoring Team */}
+            <div
+              onClick={() => topScoringTeam && onSelectTeam && onSelectTeam(topScoringTeam.team)}
+              className={`bg-[#0f1219] border border-slate-800/90 rounded-lg p-2 flex items-center gap-2.5 ${
+                topScoringTeam && completedMatches > 0 && onSelectTeam
+                  ? 'hover:border-amber-500/50 hover:bg-[#141822] cursor-pointer transition'
+                  : ''
+              }`}
+            >
+              <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+                <Flame className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1 flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Top Scoring Team</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">ATTACK</span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5 mt-0.5">
+                    {topScoringTeam && completedMatches > 0 ? (
+                      <>
+                        <TeamLogo team={topScoringTeam.team} size="xs" />
+                        <span className="text-amber-400 hover:underline">{topScoringTeam.team.clubName}</span>
+                        <span className="text-slate-400 text-xs font-normal">({topScoringTeam.team.managerName})</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-normal">Awaiting completed matches</span>
+                    )}
+                  </div>
+                </div>
+                {topScoringTeam && completedMatches > 0 && (
+                  <div className="text-right pl-2 font-mono shrink-0">
+                    <div className="text-xs font-bold text-amber-400">{topScoringTeam.goalsScored} Goals</div>
+                    <div className="text-[10px] text-slate-400">{topScoringTeam.goalsPerMatch} / gm</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Most Clean Sheets Team */}
+            <div
+              onClick={() => mostCleanSheetsTeam && onSelectTeam && onSelectTeam(mostCleanSheetsTeam.team)}
+              className={`bg-[#0f1219] border border-slate-800/90 rounded-lg p-2 flex items-center gap-2.5 ${
+                mostCleanSheetsTeam && completedMatches > 0 && onSelectTeam
+                  ? 'hover:border-cyan-500/50 hover:bg-[#141822] cursor-pointer transition'
+                  : ''
+              }`}
+            >
+              <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5" />
+              </div>
+              <div className="min-w-0 flex-1 flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Most Clean Sheets</span>
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">DEFENSE</span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5 mt-0.5">
+                    {mostCleanSheetsTeam && completedMatches > 0 ? (
+                      <>
+                        <TeamLogo team={mostCleanSheetsTeam.team} size="xs" />
+                        <span className="text-cyan-400 hover:underline">{mostCleanSheetsTeam.team.clubName}</span>
+                        <span className="text-slate-400 text-xs font-normal">({mostCleanSheetsTeam.team.managerName})</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-400 text-xs font-normal">Awaiting completed matches</span>
+                    )}
+                  </div>
+                </div>
+                {mostCleanSheetsTeam && completedMatches > 0 && (
+                  <div className="text-right pl-2 font-mono shrink-0">
+                    <div className="text-xs font-bold text-cyan-400">{mostCleanSheetsTeam.cleanSheets} Clean Sheets</div>
+                    <div className="text-[10px] text-slate-400">{mostCleanSheetsTeam.cleanSheetPct}% CS rate</div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

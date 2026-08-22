@@ -380,7 +380,11 @@ export function calculateHighScoringMatches(
   return list;
 }
 
-export function getTournamentSummary(matches: Match[], standings: StandingsRow[]) {
+export function getTournamentSummary(
+  matches: Match[],
+  standings: StandingsRow[],
+  teams?: Team[]
+) {
   const totalMatches = matches.length;
   const completedMatches = matches.filter((m) => m.status === 'completed');
   const totalGoals = completedMatches.reduce(
@@ -394,6 +398,23 @@ export function getTournamentSummary(matches: Match[], standings: StandingsRow[]
 
   const leader = standings.length > 0 ? standings[0] : null;
 
+  let topScoringTeam: TeamAttackStat | null = null;
+  let mostCleanSheetsTeam: TeamDefenseStat | null = null;
+
+  const actualTeams = teams && teams.length > 0 ? teams : standings.map((s) => s.team);
+
+  if (actualTeams.length > 0 && completedMatches.length > 0) {
+    const attackList = calculateTeamAttackLeaderboard(actualTeams, matches);
+    if (attackList.length > 0 && attackList[0].goalsScored > 0) {
+      topScoringTeam = attackList[0];
+    }
+
+    const defenseList = calculateTeamDefenseLeaderboard(actualTeams, matches);
+    if (defenseList.length > 0) {
+      mostCleanSheetsTeam = defenseList[0];
+    }
+  }
+
   return {
     totalMatches,
     completedMatches: completedMatches.length,
@@ -402,5 +423,7 @@ export function getTournamentSummary(matches: Match[], standings: StandingsRow[]
     totalGoals,
     avgGoals,
     leader,
+    topScoringTeam,
+    mostCleanSheetsTeam,
   };
 }

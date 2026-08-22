@@ -308,7 +308,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                 </th>
 
                 {/* Form */}
-                <th className="py-2.5 px-3 min-w-[120px] hidden md:table-cell text-center">Form</th>
+                <th className="py-2.5 px-2 sm:px-3 min-w-[90px] sm:min-w-[120px] text-center">Form</th>
 
                 {/* Details */}
                 <th className="py-2.5 px-1.5 sm:px-2 text-right"></th>
@@ -422,8 +422,8 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                     </td>
 
                     {/* Form Pills */}
-                    <td className="py-2 px-3 hidden md:table-cell">
-                      <div className="flex items-center justify-center gap-1">
+                    <td className="py-2 px-1.5 sm:px-3">
+                      <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                         {row.form.length === 0 ? (
                           <span className="text-[10px] text-slate-600 italic">No matches</span>
                         ) : (
@@ -431,7 +431,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                             <span
                               key={idx}
                               title={`${match.isHome ? 'vs' : '@'} ${match.opponentShortCode} (${match.score})`}
-                              className={`w-4 h-4 rounded flex items-center justify-center text-[9px] font-bold font-mono ${
+                              className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded flex items-center justify-center text-[8px] sm:text-[9px] font-bold font-mono ${
                                 match.result === 'W'
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                                   : match.result === 'D'
