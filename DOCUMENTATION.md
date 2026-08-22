@@ -313,10 +313,11 @@ Located at `src/utils/calculations.ts`, standings are calculated on every match 
 
 ### Standings Table Features
 * **Dual View Modes (Basic vs Detailed)**:
-  * **Basic View**: Streamlined 5-metric focus displaying `#`, `Club / Team`, `MP`, `PTS`, `GD`, `CS`, `Form` (in exact order). Configured as the responsive default on mobile devices.
-  * **Detailed View**: Complete 11-column breakdown displaying `#`, `Club / Team`, `MP`, `W`, `D`, `L`, `PTS`, `GF`, `GA`, `GD`, `CS`, `Form`. Configured as default on desktop/tablet devices.
-  * **Highlighted Mode Switcher**: Prominently positioned between the search control bar and the standings table with emerald active accents.
-* **Fixed Index Position**: The `#` column always displays ordinal rank (`1` to `21`) based on row order, regardless of user-selected sorting.
+  * **Detailed View (Laptop & Desktop Default, $\ge$ 768px)**: Complete 11-column statistical breakdown displaying `#`, `Club / Team`, `MP`, `W`, `D`, `L`, `PTS`, `GF`, `GA`, `GD`, `CS`, `Form`, and detail action.
+  * **Basic View (Mobile Default, < 768px)**: Streamlined 5-metric focus displaying `#`, `Club / Team`, `MP`, `PTS`, `GD`, `CS`, `Form` (in exact order).
+  * **Clean Highlighted Mode Tabs**: Prominently positioned between the search control bar and the standings table with an emerald active highlight border, glowing badge, and smooth switching.
+  * **Responsive Viewport Synchronization**: Intelligently initializes to the appropriate layout for the user's device while retaining explicit manual user selections during active sessions.
+* **Fixed Index Position**: The `#` column always displays ordinal rank (`1` to `21`) based on row position, regardless of user-selected column sorting (e.g. sorting by GF, GD, or MP keeps row numbers 1, 2, 3, ... sequential).
 * **Zone Highlighting**:
   * **Ranks 1–4 (UCL Champions Zone)**: Emerald badge & indicator (`#10b981`).
   * **Ranks 5–8 (Europa League Zone)**: Cyan badge (`#06b6d4`).
