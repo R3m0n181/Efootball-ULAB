@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import {
   loadTournamentState,
   saveTournamentState,
@@ -475,6 +476,9 @@ export default function App() {
         matchSummary={submittedMatchInfo}
         durationMs={3500}
       />
+      
+      {/* Vercel Web Analytics */}
+      <Analytics />
     </div>
   );
 }
