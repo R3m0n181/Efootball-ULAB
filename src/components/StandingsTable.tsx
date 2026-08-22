@@ -315,30 +315,31 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60 text-xs">
-              {filteredAndSortedStandings.map((row) => {
+              {filteredAndSortedStandings.map((row, index) => {
+                const position = index + 1;
                 return (
                   <tr
                     key={row.team.id}
                     onClick={() => onSelectTeam(row.team)}
                     className={`group transition hover:bg-slate-800/50 cursor-pointer ${
-                      row.rank === 1 ? 'bg-amber-500/5' : ''
+                      position === 1 ? 'bg-amber-500/5' : ''
                     }`}
                   >
-                    {/* Rank */}
+                    {/* Rank / Fixed Position */}
                     <td className="py-2 px-2 text-center font-mono font-bold">
                       <div className="flex items-center justify-center">
                         <span
                           className={`w-5 h-5 rounded flex items-center justify-center text-xs ${
-                            row.rank === 1
+                            position === 1
                               ? 'bg-amber-500 text-slate-950 font-black shadow-sm shadow-amber-500/20'
-                              : row.rank === 2
+                              : position === 2
                               ? 'bg-slate-300 text-slate-950 font-bold'
-                              : row.rank === 3
+                              : position === 3
                               ? 'bg-amber-700 text-white font-bold'
                               : 'text-slate-400'
                           }`}
                         >
-                          {row.rank}
+                          {position}
                         </span>
                       </div>
                     </td>
