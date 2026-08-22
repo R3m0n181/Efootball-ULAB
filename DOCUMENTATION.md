@@ -1,300 +1,415 @@
-# eFootball Mobile Premier League 2026 — Project Documentation
+# eFootball Mobile Premier League 2026 — Master Blueprint & Replication Guide
 
-Comprehensive documentation covering the architecture, website structure, user flows, feature specifications, design system, data models, and deployment configurations for the **eFootball Mobile Premier League 2026** platform.
-
----
-
-## 1. Overview & Project Purpose
-
-The **eFootball Mobile Premier League 2026** is a full-stack, mobile-first tournament management and live statistics platform purpose-built for competitive eFootball mobile esports leagues. It automates league scheduling, real-time standings calculations, match verification with screenshot uploads, team performance analytics, and dynamic social media fixture graphics.
-
-### Core Objectives
-* **Automated League Operations**: Generate complete 42-round double round-robin tournament schedules with mathematically balanced home/away pairings and odd-team bye distributions.
-* **Instant Real-Time Synchronization**: Live sync across all participating managers and spectators using Firebase Cloud Firestore with automatic offline local storage fallback.
-* **Integrity & Proof of Play**: Admin-authenticated score entry with integrated client-side screenshot compression to record official in-game match result screens.
-* **Broadcast-Quality Visuals**: Built-in HTML5 Canvas graphic engine to export high-resolution shareable fixture and match result cards for WhatsApp, Discord, and Instagram.
+A comprehensive, turnkey guide containing everything required to clone, configure, build, run, deploy, and administer the **eFootball Mobile Premier League 2026** platform from scratch.
 
 ---
 
-## 2. Technology Stack & Dependencies
-
-| Layer | Technology / Library | Purpose |
-| :--- | :--- | :--- |
-| **Framework** | **React 18 + Vite** | High-performance SPA with client-side rendering |
-| **Language** | **TypeScript 5.8+** | Strict type safety across match events and standings calculations |
-| **Styling** | **Tailwind CSS v4** | Modern utility-first dark esports aesthetic with responsive breakpoints |
-| **Icons** | **lucide-react** | Consistent iconography for status badges, arrows, tabs, and actions |
-| **Database & Realtime** | **Google Cloud Firestore** | Multi-device cloud state persistence and real-time snapshot listeners |
-| **Auth & Security** | **Custom Admin Auth** | SHA-256 password hash verification and environment credential pairing |
-| **Image Compression** | **HTML5 Canvas API** | In-browser JPEG/WebP compression (down to ~30KB) before cloud upload |
-| **Deployment** | **Vercel / Cloud Run** | Zero-config static SPA deployment with `vercel.json` rewrites |
+## Table of Contents
+1. [System Architecture & Capabilities](#1-system-architecture--capabilities)
+2. [Technology Stack & Key Dependencies](#2-technology-stack--key-dependencies)
+3. [Full Project File Structure](#3-full-project-file-structure)
+4. [Step-by-Step Local Setup & Replication](#4-step-by-step-local-setup--replication)
+5. [Database Architecture & Firestore Schema](#5-database-architecture--firestore-schema)
+6. [League Scheduling Engine & Berger Algorithm](#6-league-scheduling-engine--berger-algorithm)
+7. [Standings Calculation & Tie-Break Logic](#7-standings-calculation--tie-break-logic)
+8. [Admin Authentication & Workflow](#8-admin-authentication--workflow)
+9. [Component Architecture & UI Specifications](#9-component-architecture--ui-specifications)
+10. [Social Share Card Canvas Generator](#10-social-share-card-canvas-generator)
+11. [Deployment Guides (Vercel, Cloud Run, Firebase)](#11-deployment-guides-vercel-cloud-run-firebase)
+12. [Troubleshooting & FAQ](#12-troubleshooting--faq)
 
 ---
 
-## 3. Directory & File Structure
+## 1. System Architecture & Capabilities
+
+The **eFootball Mobile Premier League 2026** is a high-performance, mobile-first esports tournament manager tailored for 21-club league competitions.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                             Client Browser / PWA                            │
+│                                                                             │
+│   ┌──────────────────┐  ┌───────────────────┐  ┌────────────────────────┐   │
+│   │ Standings Table  │  │  42-Round Schedule│  │ Team Dossiers & Stats  │   │
+│   │ (Fixed Index,    │  │  (Berger Rotation,│  │ (Recent Form, History, │   │
+│   │  Sort, Zones)    │  │   Auto Bye Teams) │  │  Head-to-Head Records) │   │
+│   └─────────┬────────┘  └─────────┬─────────┘  └───────────┬────────────┘   │
+│             │                     │                        │                │
+│             └─────────────────────┼────────────────────────┘                │
+│                                   │                                         │
+│                      ┌────────────┴────────────┐                            │
+│                      │ React 18 + Vite App Shell│                            │
+│                      │  (Admin Mode Auth Guard)│                            │
+│                      └────────────┬────────────┘                            │
+│                                   │                                         │
+│         ┌─────────────────────────┴────────────────────────┐                │
+│         ▼                                                  ▼                │
+│  ┌───────────────┐                                  ┌───────────────┐       │
+│  │ LocalStorage  │                                  │ HTML5 Canvas  │       │
+│  │ Offline Cache │                                  │ PNG Generator │       │
+│  └───────────────┘                                  └───────────────┘       │
+└───────────────────────────────────┬─────────────────────────────────────────┘
+                                    │ Real-time Sync & On-Demand Proofs
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Google Cloud Firestore                             │
+│                                                                             │
+│  📁 /tournaments/efootball_premier_league_2026                              │
+│     ├── 📄 metadata, config, teams[21], matches[420] (~60 KB payload)       │
+│                                                                             │
+│  📁 /match_proofs/{matchId} (Decoupled High-Speed Cloud Proof Store)        │
+│     ├── 📄 matchId, screenshotUrl (compressed ~8-20 KB), uploadedAt         │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Key Architectural Highlights
+* **Decoupled Match Proof Store**: Screenshots are compressed on the client to ~8–20 KB and stored in an independent `/match_proofs/{matchId}` collection. This keeps the primary 420-match tournament document under ~60 KB (well below Firestore's 1 MB limit) for lightning-fast loads.
+* **Dual Resilience Engine**: Seamless offline fallback via `localStorage`. If Firestore credentials are not configured or network drops, the application works offline seamlessly without breaking.
+* **Fixed Standings Position Index**: The position numbering column (`1` through `21`) stays permanently locked in ordinal order regardless of which column sort or filter is applied.
+* **Admin-Specific Action Delegation**: Unplayed fixtures display "Submit" buttons for authenticated admins to enter scores, while standard visitors see a clean "Scheduled" badge.
+
+---
+
+## 2. Technology Stack & Key Dependencies
+
+| Layer | Package / Technology | Version | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Runtime / UI** | `react` & `react-dom` | `^19.0.1` | Declarative UI components & state hooks |
+| **Build Tooling** | `vite` | `^6.2.3` | Ultra-fast ES module development & bundling |
+| **Type Checking** | `typescript` | `~5.8.2` | Complete type-safety across models and events |
+| **CSS Framework** | `@tailwindcss/vite` & `tailwindcss` | `^4.1.14` | Modern CSS styling with dark esports palette |
+| **Animations** | `motion` | `^12.23.24` | Smooth modal transitions and tab interactions |
+| **Iconography** | `lucide-react` | `^0.546.0` | Comprehensive vector icon set |
+| **Cloud Database** | `firebase` | `^12.17.1` | Firestore real-time snapshot listeners & sync |
+| **Effects** | `canvas-confetti` | `^1.9.4` | Championship celebration animations |
+| **Server Engine** | `express` | `^4.21.2` | Optional Node.js wrapper for container environments |
+
+---
+
+## 3. Full Project File Structure
 
 ```text
-├── .env.example                     # Environment variables template for Firebase & Admin credentials
-├── firebase-blueprint.json          # Firestore schema definition for cloud collections
-├── firestore.rules                  # Firestore security rules enforcing read/write permissions
-├── index.html                       # HTML entry point with viewport tags & font preloads
-├── metadata.json                    # Application metadata and server-side capability declarations
-├── package.json                     # Project manifest, dependencies, and build scripts
+.
+├── .env.example                     # Environment template for Firebase & admin keys
+├── .gitignore                       # Git ignore list (node_modules, dist, .env)
+├── DOCUMENTATION.md                 # Complete architecture & replication guide
+├── firebase-blueprint.json          # Firestore collection definitions
+├── firestore.rules                  # Firestore security rules
+├── index.html                       # HTML5 entry point with responsive viewport
+├── metadata.json                    # Application metadata and capabilities
+├── package.json                     # NPM dependencies and run scripts
 ├── tsconfig.json                    # TypeScript compiler configuration
-├── vercel.json                      # Vercel deployment rewrite rules for SPA client routing
+├── vercel.json                      # Vercel SPA rewrite configuration
+├── vite.config.ts                   # Vite bundler configuration with Tailwind plugin
 ├── public/
-│   ├── icon.svg                     # Official league crest icon
-│   └── team-logos/                  # Standalone SVG vector files for all 21 clubs
+│   ├── icon.svg                     # Primary league crest icon
+│   └── team-logos/                  # SVG vector club crests
 └── src/
-    ├── App.tsx                      # Primary application shell, tab routing & state manager
-    ├── main.tsx                     # React DOM root bootstrapping
-    ├── index.css                    # Tailwind CSS imports and custom scrollbar styles
-    ├── types.ts                     # Global TypeScript interfaces, types, and enums
+    ├── App.tsx                      # Root application shell, tab router & state coordinator
+    ├── main.tsx                     # React DOM entry point
+    ├── index.css                    # Tailwind CSS imports & custom scrollbar styles
+    ├── types.ts                     # TypeScript data contracts (Team, Match, Standings, etc.)
     ├── assets/
-    │   ├── league_logo.jpg          # High-resolution tournament banner / branding
-    │   └── teamLogos.ts             # Compiled vector SVG data URIs for offline logo loading
+    │   ├── league_logo.jpg          # High-resolution branding banner
+    │   └── teamLogos.ts             # Embedded vector SVG data URIs for instant offline render
     ├── components/
-    │   ├── AdminLoginModal.tsx      # Admin authentication dialog with credential validation
-    │   ├── FixturesView.tsx         # 42-matchday schedule browser with horizontal round scroll
-    │   ├── Header.tsx               # Global top navigation bar, status indicators, and quick stats
-    │   ├── MatchDetailModal.tsx     # Comprehensive match dossier (H2H, goals, screenshot, share)
-    │   ├── ShareFixtureCardModal.tsx# Canvas-based social graphic generator for fixture cards
-    │   ├── StandingsTable.tsx       # Live league table with qualification zones and form pills
-    │   ├── SubmitResultModal.tsx    # Score entry form with goal events & screenshot compressor
-    │   ├── TeamDetailModal.tsx      # Club dossier with manager bio, squad records, and match history
+    │   ├── AdminLoginModal.tsx      # Admin authentication dialog
+    │   ├── FixturesView.tsx         # 42-matchday round browser with horizontal carousel
+    │   ├── Header.tsx               # Global top navigation, tournament stats, and admin badge
+    │   ├── MatchDetailModal.tsx     # Comprehensive match popup (H2H, goals, proof, share)
+    │   ├── ShareFixtureCardModal.tsx# HTML5 Canvas social card generator
+    │   ├── StandingsTable.tsx       # Live standings table with fixed index & form pills
+    │   ├── SubmitResultModal.tsx    # Match score submission & image compression form
+    │   ├── TeamDetailModal.tsx      # Club dossier with manager bio, form, and fixture schedule
     │   ├── TeamLogo.tsx             # Universal club crest component with vector fallback
-    │   ├── TeamsListView.tsx        # Directory view of all 21 participating teams & managers
-    │   └── TournamentSettingsModal.tsx # Tournament configuration and schedule reset controls
+    │   ├── TeamsListView.tsx        # Grid directory of all 21 teams & managers
+    │   └── TournamentSettingsModal.tsx # Reset schedule, edit rules, seed test data
     ├── data/
-    │   └── initialData.ts           # Default roster of 21 teams, initial config, and seed state
+    │   └── initialData.ts           # Roster of 21 participating teams & default tournament config
     ├── lib/
-    │   ├── firebase.ts              # Firebase SDK initialization with silent offline fallback
-    │   └── firestoreLeague.ts       # Cloud Firestore CRUD operations, real-time snapshot sync
+    │   ├── firebase.ts              # Firebase app initialization with offline fallback
+    │   └── firestoreLeague.ts       # Cloud Firestore CRUD & snapshot sync handlers
     └── utils/
-        ├── auth.ts                  # Admin session verification, local token storage
-        ├── calculations.ts          # League standings, tiebreaks, H2H, and attack/defense stats
-        ├── imageCompressor.ts       # Client-side image resizer and optimizer
-        ├── sampleData.ts            # Demonstration sample matches and goal records
-        ├── scheduler.ts             # Double round-robin fixture generator with Berger algorithm
-        └── storage.ts               # LocalStorage backup engine for offline resilience
+        ├── auth.ts                  # Admin session verification & token handling
+        ├── calculations.ts          # Standings computation, tiebreakers & analytics
+        ├── imageCompressor.ts       # Client-side HTML5 canvas image optimizer (~8KB output)
+        ├── sampleData.ts            # Demonstration match results for testing
+        ├── scheduler.ts             # 42-round double round-robin generator (Berger algorithm)
+        └── storage.ts               # LocalStorage fallback persistence manager
 ```
 
 ---
 
-## 4. Core Features & Specifications
+## 4. Step-by-Step Local Setup & Replication
 
-### 4.1. Live Standings & Dynamic Table
-* **Automatic Metric Computation**: Calculates Matches Played (MP), Wins (W), Draws (D), Losses (L), Goals For (GF), Goals Against (GA), Goal Difference (GD), Points (PTS), and Clean Sheets (CS).
-* **Multi-Column Interactive Sorting**: Default sorting by **PTS (Points, descending)** with official tiebreaker fallbacks (GD > GF > Rank). Every column (`#`, `Club / Team`, `MP`, `W`, `D`, `L`, `PTS`, `GF`, `GA`, `GD`, `CS`) is clickable to sort in ascending or descending order, complete with an instant "Reset Sort" action.
-* **Official Tiebreak Hierarchy**:
-  1. Points
-  2. Goal Difference (GD)
-  3. Goals Scored (GF)
-  4. Head-to-Head record between tied teams
-  5. Alphabetical club code
-* **Visual Qualification Zones**:
-  * **UCL / Championship Zone (Ranks 1–4)**: Highlighting in vivid emerald green (`#10b981`).
-  * **Europa League Zone (Ranks 5–8)**: Outlined in bright cyan/blue (`#06b6d4`).
-  * **Mid-Table (Ranks 9–17)**: Neutral slate tone.
-  * **Relegation / Drop Zone (Ranks 18–21)**: Framed in rose/red (`#f43f5e`).
-* **Recent Form Sequence**: Interactive last-5 match pills (`W`, `D`, `L`) showing score tooltips and home/away opponents.
+Follow these exact steps to clone, configure, and run the project locally.
 
-### 4.2. 42-Matchday Double Round-Robin Fixtures
-* **Mathematical Scheduling Algorithm**: Employs the Berger polygon rotation method to generate 42 matchdays for 21 clubs (21 home rounds + 21 return legs).
-* **Automatic Bye Management**: Because 21 is an odd number, exactly 1 team receives an official bye each matchday. The active bye team is prominently displayed at the top of each matchday.
-* **Horizontally Scrollable Round Carousel**:
-  * Clean, touch-pan enabled carousel spanning `MD1` to `MD42`.
-  * Visual status dots: **Green dot** for fully completed rounds, **Amber dot** for in-progress rounds.
-  * Auto-centering feature: Switching matchdays smoothly scrolls the active round pill into the middle of the viewport.
-* **Filters**: Quick toggles for *All Matches*, *Completed*, *Scheduled*, or filtering by a specific club.
-
-### 4.3. Proof of Play & Score Submission
-* **Admin Verification**: Only authenticated league administrators can submit, modify, or overturn match scores.
-* **Score & Event Recording**: Input home and away scorelines, goal events (scorer name, assist, minute, penalty, own goal), and referee notes.
-* **Decoupled High-Speed Cloud Proof Store (Option 1 Architecture)**:
-  * Upload screenshots directly from mobile device or desktop browser.
-  * Screenshots are compressed into lightweight ~8KB payloads and stored independently in the `/match_proofs/{matchId}` collection.
-  * The primary tournament record (`/tournaments/efootball_premier_league_2026`) is completely decoupled from screenshot payload size, keeping the entire 420-fixture league schedule at a minimal ~60KB footprint (vastly below Firestore's 1MB single-document limit).
-  * Proofs are loaded on-demand with instant LRU caching and real-time subscription when a user views a match dossier.
-
-### 4.4. Team Profiles & Head-to-Head Dossiers
-* **Club Detail Modal**: Displays manager name, squad colors, total matches, win rate, goals per game, clean sheets, and full historical match timeline.
-* **Head-to-Head Analysis**: Comparing any two teams computes lifetime H2H aggregate scores, total meetings, goal averages, and past encounter outcomes.
-
-### 4.5. League Analytics & Leaderboards
-* **Top Attacking Units**: Teams ranked by total goals scored and goals per match average.
-* **Defensive Resilience**: Teams ranked by fewest goals conceded and clean sheet percentage.
-* **High-Scoring Thrillers**: Chronological log of the highest-scoring matches across the entire tournament.
-
-### 4.6. Social Media Graphic Generator (Canvas)
-* Renders 1080×1080 or 1200×630 shareable graphics directly inside the browser using HTML5 Canvas.
-* Features team crests, club names, manager tags, official scorelines, matchday badges, and tournament watermarks.
-* One-click download button (`PNG`) formatted for WhatsApp groups, Discord announcements, and Instagram stories.
-
----
-
-## 5. User Flows & Interaction Models
-
-### 5.1. Spectator & Player Flow
-
-```mermaid
-graph TD
-    A[Visitor Opens Web App] --> B[Browse Standings Table]
-    B --> C{Select Interaction}
-    C -->|Click Team| D[Open Team Profile & Records]
-    C -->|Click Matchday Tab| E[Browse MD1-MD42 Fixtures]
-    C -->|Click Match Card| F[Open Match Detail Dossier]
-    F --> G[Inspect H2H & Proof Screenshot]
-    F --> H[Export Shareable Matchday Card PNG]
+### Step 1: Clone or Initialize Workspace
+```bash
+git clone <your-repository-url> efootball-premier-league
+cd efootball-premier-league
 ```
 
-1. **Viewing Standings**: The spectator sees the live leaderboard, qualification cutoffs, and recent form.
-2. **Reviewing Matchdays**: The user navigates to the **Fixtures** tab, scrolls through matchday pills (e.g. `MD12`), and filters by their preferred team.
-3. **Checking Proof**: Clicking any completed fixture opens the match dossier displaying the official screenshot submitted by the manager.
-4. **Sharing**: Clicking "Share Card" renders a custom branded image ready for saving to camera roll.
-
----
-
-### 5.2. League Administrator Flow
-
-```mermaid
-graph TD
-    A[Admin Click 'Admin Login' in Header] --> B[Enter Admin Password]
-    B --> C[Admin Mode Enabled: Amber Crown Badge]
-    C --> D{Admin Operations}
-    D -->|Submit Result| E[Open Submit Result Modal]
-    E --> F[Select Match, Enter Score & Goals]
-    F --> G[Upload Match Screenshot - Auto-Compress]
-    G --> H[Save to Cloud Firestore]
-    H --> I[Live Broadcast to All Spectators]
-    D -->|Tournament Settings| J[Change Tournament Rules / Reset Schedule]
+### Step 2: Install Dependencies
+```bash
+npm install
 ```
 
-1. **Authentication**: Admin clicks the padlock icon in the header and inputs the master administrator password (`League987` or environment default).
-2. **Result Entry**: Admin clicks the "Submit Result" button in the header or the pen icon on any fixture card.
-3. **Score & Screenshot**: Admin inputs final score (e.g., `3 - 1`), uploads the victory screenshot, and clicks **Save Match Result**.
-4. **Live Synchronization**: The match status transitions to `completed`, points and standings are instantly recalculated, and the update is pushed to all connected clients via Firestore.
-
----
-
-## 6. Design System & Aesthetic Archetype
-
-The visual design follows a **Precision Dark Esports** archetype tailored for competitive gaming:
-
-### Color Palette
-* **Deep Obsidian Surface (`#0a0c10` / `#0f172a`)**: Primary backdrop minimizing eye strain while providing high contrast for team colors.
-* **Emerald Glow (`#10b981`)**: Primary accent used for UCL qualification spots, active matchday tabs, victories, and positive goal difference.
-* **Electric Cyan (`#06b6d4`)**: Secondary accent denoting Europa League positions and interactive links.
-* **Amber / Trophy Gold (`#f59e0b`)**: Highlight color for admin crown badges, high-scoring matches, and in-progress matchday dots.
-* **Rose / Red (`#f43f5e`)**: Danger indicator for relegation zones, match losses, and reset confirmations.
-
-### Typographic Hierarchy
-* **Display & Numerals**: Monospace styling (`font-mono`) for scores, matchday badges, points, and table metrics to prevent jitter and maintain numerical alignment.
-* **Club & Manager Names**: Medium to bold tracking (`font-semibold`) with uppercase short codes (e.g. `BVB`, `RMA`, `FCB`).
-* **Micro-labels**: High-contrast muted slate (`text-slate-400` / `text-slate-300`) with generous spacing.
-
----
-
-## 7. Data Models & TypeScript Interfaces
-
-### `Team`
-```typescript
-export interface Team {
-  id: string;              // Unique identifier (e.g., 'team-1')
-  managerName: string;     // Manager / player display name
-  clubName: string;        // Official club name (e.g., 'Real Madrid')
-  shortCode: string;       // 3-letter acronym (e.g., 'RMA')
-  logo: string;            // Vector SVG or Data URL
-  color: string;           // Primary hex color
-  secondaryColor: string;  // Secondary hex color
-  feePaid?: boolean;       // Registration fee status
-}
+### Step 3: Configure Environment Variables
+Create a `.env` file in the root directory by copying `.env.example`:
+```bash
+cp .env.example .env
 ```
 
-### `Match`
-```typescript
-export interface Match {
-  id: string;              // Match identifier (e.g., 'match-1-1')
-  round: number;           // Matchday round (1 to 42)
-  matchNumber: number;     // Sequential match number within round
-  homeTeamId: string;      // Reference to Team.id
-  awayTeamId: string;      // Reference to Team.id
-  homeScore: number | null;// Null until completed
-  awayScore: number | null;// Null until completed
-  status: 'scheduled' | 'in_progress' | 'completed' | 'disputed';
-  playedAt?: string;       // ISO 8601 timestamp
-  goals?: GoalEvent[];     // Optional breakdown of goal events
-  notes?: string;          // Admin notes or penalties
-  screenshotUrl?: string;  // Compressed image Data URI
-  submittedBy?: string;    // Submitter name or admin ID
-}
-```
-
-### `StandingsRow`
-```typescript
-export interface StandingsRow {
-  team: Team;
-  rank: number;
-  previousRank?: number;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  goalDifference: number;
-  points: number;
-  form: ('W' | 'D' | 'L')[];
-  recentMatches: {
-    matchId: string;
-    opponentShortCode: string;
-    result: 'W' | 'D' | 'L';
-    score: string;
-    isHome: boolean;
-  }[];
-  cleanSheets: number;
-}
-```
-
----
-
-## 8. Deployment & Environment Setup
-
-### 8.1. Environment Variables (`.env`)
-To run the project with real-time cloud synchronization, create a `.env` file in the root directory:
-
+Populate the variables:
 ```env
 # Admin Credentials
 VITE_ADMIN_DEFAULT_EMAIL="admin@efootball.com"
 VITE_ADMIN_DEFAULT_PASSWORD="League987"
 VITE_ADMIN_DEFAULT_NAME="League Administrator"
 
-# Firebase Cloud Firestore Configuration
-VITE_FIREBASE_API_KEY="AIzaSyDMNIYIrGuk-DxsOZFy9RD8PEWDAjIGghQ"
-VITE_FIREBASE_AUTH_DOMAIN="refreshing-continuum-85fd2.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="refreshing-continuum-85fd2"
-VITE_FIREBASE_STORAGE_BUCKET="refreshing-continuum-85fd2.firebasestorage.app"
-VITE_FIREBASE_MESSAGING_SENDER_ID="790544091942"
-VITE_FIREBASE_APP_ID="1:790544091942:web:2f860dd55ef4b744c2cfe7"
-VITE_FIREBASE_FIRESTORE_DATABASE_ID="ai-studio-efootballmobilel-a8caeed4-3cad-466b-9f02-3612288b173d"
+# Firebase Configuration (Optional - runs on LocalStorage if left blank)
+VITE_FIREBASE_API_KEY="your-api-key"
+VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
+VITE_FIREBASE_PROJECT_ID="your-project-id"
+VITE_FIREBASE_STORAGE_BUCKET="your-project.firebasestorage.app"
+VITE_FIREBASE_MESSAGING_SENDER_ID="your-sender-id"
+VITE_FIREBASE_APP_ID="your-app-id"
+VITE_FIREBASE_FIRESTORE_DATABASE_ID="(default)"
 ```
 
-### 8.2. Deploying to Vercel
-1. Push the repository to GitHub.
-2. In the Vercel dashboard, click **Import Project**.
-3. Under **Project Settings → Environment Variables**, add the variables from `.env`.
-4. Deploy — the included `vercel.json` ensures all SPA routes route smoothly without 404 errors:
-```json
+### Step 4: Run Development Server
+```bash
+npm run dev
+```
+The application will launch at `http://localhost:3000`.
+
+### Step 5: Verify Type Checking & Build
+```bash
+# Run TypeScript compilation checks
+npm run lint
+
+# Compile production bundle to /dist
+npm run build
+```
+
+---
+
+## 5. Database Architecture & Firestore Schema
+
+The database is built on Google Cloud Firestore with two primary collections:
+
+### Collection 1: `/tournaments`
+* **Document ID**: `efootball_premier_league_2026`
+* **Schema**:
+```typescript
 {
-  "rewrites": [
+  id: "efootball_premier_league_2026",
+  name: "eFootball Mobile Premier League 2026",
+  status: "in_progress", // 'draft' | 'in_progress' | 'completed'
+  currentRound: 1,
+  totalRounds: 42,
+  teams: [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      id: "team-1",
+      managerName: "Remon",
+      clubName: "Borussia Dortmund",
+      shortCode: "BVB",
+      logo: "https://...",
+      color: "#FDE100",
+      secondaryColor: "#000000",
+      feePaid: true
     }
-  ]
+    // ... 21 teams
+  ],
+  matches: [
+    {
+      id: "match-1-1",
+      round: 1,
+      matchNumber: 1,
+      homeTeamId: "team-1",
+      awayTeamId: "team-2",
+      homeScore: 2, // null if unplayed
+      awayScore: 1, // null if unplayed
+      status: "completed", // 'scheduled' | 'in_progress' | 'completed' | 'disputed'
+      playedAt: "2026-08-22T10:00:00.000Z",
+      screenshotUrl: "proof-stored-in-match-proofs", // Reference key
+      submittedBy: "League Administrator"
+    }
+    // ... 420 matches
+  ],
+  config: {
+    pointsForWin: 3,
+    pointsForDraw: 1,
+    pointsForLoss: 0,
+    hasScreenshotsRequirement: true,
+    championsLeagueSpots: 4,
+    europaLeagueSpots: 4,
+    relegationSpots: 4
+  },
+  updatedAt: "2026-08-22T14:00:00.000Z"
+}
+```
+
+### Collection 2: `/match_proofs` (Decoupled Store)
+* **Document ID**: `{matchId}` (e.g. `match-1-1`)
+* **Schema**:
+```typescript
+{
+  matchId: "match-1-1",
+  screenshotUrl: "data:image/jpeg;base64,/9j/4AAQSkZJRg...", // Compressed ~8-20 KB
+  updatedAt: "2026-08-22T14:00:00.000Z"
+}
+```
+
+### Firestore Security Rules (`firestore.rules`)
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /tournaments/{tournamentId} {
+      allow read, write: if true;
+    }
+    match /tournaments/{tournamentId}/{document=**} {
+      allow read, write: if true;
+    }
+    match /teams/{teamId} {
+      allow read, write: if true;
+    }
+    match /matches/{matchId} {
+      allow read, write: if true;
+    }
+    match /match_proofs/{matchId} {
+      allow read, write: if true;
+    }
+  }
 }
 ```
 
 ---
 
-*Document compiled for the eFootball Mobile Premier League 2026 Season.*
+## 6. League Scheduling Engine & Berger Algorithm
+
+Located at `src/utils/scheduler.ts`, the scheduling engine utilizes the **Berger Polygon Rotation Algorithm** tailored for an odd number of clubs (21 teams):
+
+1. **Dummy / Bye Team Assignment**: With 21 teams ($N = 21$), a virtual 22nd team (`dummy`) is added. In any round where a club is paired against `dummy`, that club receives the official **Bye**.
+2. **First Leg (Rounds 1–21)**: Each team plays 20 matches and receives 1 bye. Home and away fixtures alternate per round.
+3. **Second Leg (Rounds 22–42)**: The pairings from rounds 1–21 are inverted ($Home \leftrightarrow Away$), ensuring every club plays every other club exactly once at home and once away.
+4. **Total Tournament Matches**:
+$$\text{Total Matches} = 21 \times 20 = 420 \text{ matches}$$
+$$\text{Matches per Matchday} = 10 \text{ matches} + 1 \text{ bye team}$$
+
+---
+
+## 7. Standings Calculation & Tie-Break Logic
+
+Located at `src/utils/calculations.ts`, standings are calculated on every match state change:
+
+### Official Tie-Break Hierarchy
+1. **Points (PTS)**: 3 for Win, 1 for Draw, 0 for Loss.
+2. **Goal Difference (GD)**: $\text{Goals For (GF)} - \text{Goals Against (GA)}$.
+3. **Goals For (GF)**: Total goals scored.
+4. **Head-to-Head (H2H)**: Aggregate points and goal difference in direct encounters between tied teams.
+5. **Alphabetical Club Code**: Tie-breaker fallback.
+
+### Standings Table Features
+* **Fixed Index Position**: The `#` column always displays ordinal rank (`1` to `21`) based on row order, regardless of user-selected sorting.
+* **Zone Highlighting**:
+  * **Ranks 1–4 (UCL Champions Zone)**: Emerald badge & indicator (`#10b981`).
+  * **Ranks 5–8 (Europa League Zone)**: Cyan badge (`#06b6d4`).
+  * **Ranks 9–17 (Mid-table)**: Slate neutral tone.
+  * **Ranks 18–21 (Relegation Zone)**: Rose badge (`#f43f5e`).
+* **Recent Form**: Last 5 matches rendered as outcome pills (`W`, `D`, `L`) with interactive opponent tooltips.
+
+---
+
+## 8. Admin Authentication & Workflow
+
+### Authentication Mechanism
+* Admin status is checked via `src/utils/auth.ts` using credentials defined in `.env` (default: `admin@efootball.com` / `League987`).
+* Sessions are secured using a local token in `localStorage`.
+
+### Admin-Only Capabilities
+1. **Submit & Edit Results**:
+   * Direct "Submit" button on unplayed fixtures in both the Fixtures view and the Team Profile modal.
+   * Enter scores, record goalscorers/assists, and upload screenshot proof.
+2. **Client-Side Image Compression (`src/utils/imageCompressor.ts`)**:
+   * Incoming screenshots are drawn to an off-screen HTML5 Canvas.
+   * Scaled down to max dimension 800px and JPEG quality 0.55.
+   * Typical output size: **~8 KB to ~20 KB** (prevents high cloud egress and quota exhaustion).
+3. **Tournament Management**:
+   * Reset schedule, seed demonstration results, or clear all match history.
+
+---
+
+## 9. Component Architecture & UI Specifications
+
+```
+src/components/
+├── Header.tsx                 # Top navigation, live match count, search, and Admin toggle
+├── StandingsTable.tsx         # Main league table with qualification zones and form pills
+├── FixturesView.tsx           # 42-round horizontal scroll carousel & fixture list
+├── TeamsListView.tsx          # 21-team grid cards with season stats and recent form
+├── TeamDetailModal.tsx        # Team profile, manager info, squad statistics, and match schedule
+├── MatchDetailModal.tsx       # Match breakdown, goal events, H2H record, and screenshot proof
+├── SubmitResultModal.tsx      # Admin score submission with instant image compression
+├── ShareFixtureCardModal.tsx  # HTML5 Canvas social card generator
+├── TournamentSettingsModal.tsx# Administrative controls and reset tools
+├── AdminLoginModal.tsx        # Security login dialog
+└── TeamLogo.tsx               # Resilient SVG/URL club crest renderer with fallback
+```
+
+---
+
+## 10. Social Share Card Canvas Generator
+
+Located at `src/components/ShareFixtureCardModal.tsx`:
+* Renders a broadcast-ready 1080×1080 graphic directly in the browser using the HTML5 Canvas API.
+* Features:
+  * Team crests, manager names, and short codes.
+  * Live score display or matchday badge for upcoming games.
+  * "eFootball Mobile Premier League 2026" official branding and watermark.
+* One-click download as high-quality `PNG` for instant posting to WhatsApp groups, Discord channels, and Instagram.
+
+---
+
+## 11. Deployment Guides (Vercel, Cloud Run, Firebase)
+
+### Deploying to Vercel (Recommended)
+1. Push your project to a GitHub repository.
+2. Log in to [Vercel](https://vercel.com) and click **Add New Project**.
+3. Import the repository.
+4. Under **Environment Variables**, copy the keys from `.env`.
+5. Deploy. The included `vercel.json` ensures all SPA routes route to `/index.html`.
+
+### Deploying to Google Cloud Run / Container
+Build and run using Docker:
+```dockerfile
+FROM node:20-alpine AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm install
+COPY . .
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 3000
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+---
+
+## 12. Troubleshooting & FAQ
+
+### Q1: The app displays "Offline Mode (LocalStorage)" in the header. Why?
+**A**: Firebase environment variables are either missing or the database ID is incorrect. The app automatically falls back to local storage so you can test and use all features without cloud configuration. To connect to Cloud Firestore, fill in valid keys in `.env`.
+
+### Q2: Why are position numbers (#) sequential even when sorted by Goals For?
+**A**: The table is intentionally designed to keep the visual row index locked to `1, 2, 3, ...` to provide a clean, readable row reference, while sorting the data rows according to your selected metric.
+
+### Q3: How do I change the default 21 teams?
+**A**: Edit `src/data/initialData.ts`. Modify the `INITIAL_TEAMS` array with your custom manager names, club names, short codes, and colors. Then open **Tournament Settings** in the app and click **Reset Schedule**.
+
+---
+
+*eFootball Mobile Premier League 2026 — Master Blueprint Documentation*
