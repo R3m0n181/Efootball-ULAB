@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Search,
   ChevronRight,
@@ -6,6 +6,8 @@ import {
   ArrowUp,
   ArrowDown,
   RotateCcw,
+  LayoutList,
+  TableProperties,
 } from 'lucide-react';
 import { StandingsRow, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -39,6 +41,28 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('points');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Track if user manually switched mode
+  const [userSelectedMode, setUserSelectedMode] = useState<boolean>(false);
+  
+  // Default to 'detailed' on laptops & desktop viewports (>= 768px), 'basic' on mobile (< 768px)
+  const [viewMode, setViewMode] = useState<'basic' | 'detailed'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 768 ? 'detailed' : 'basic';
+    }
+    return 'detailed';
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (!userSelectedMode && typeof window !== 'undefined') {
+        const isDesktopOrLaptop = window.innerWidth >= 768;
+        setViewMode(isDesktopOrLaptop ? 'detailed' : 'basic');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [userSelectedMode]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -169,6 +193,42 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
         </div>
       </div>
 
+      {/* Highlighted View Mode Tabs (Basic vs Detailed) */}
+      <div className="flex items-center">
+        <div className="inline-flex items-center p-1 bg-[#0a0c10] rounded-xl border-2 border-emerald-500/40 shadow-md shadow-emerald-950/40 w-full sm:w-auto">
+          <button
+            id="standings-mode-basic-btn"
+            onClick={() => {
+              setViewMode('basic');
+              setUserSelectedMode(true);
+            }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'basic'
+                ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30 font-black'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            <span>Basic Table</span>
+          </button>
+          <button
+            id="standings-mode-detailed-btn"
+            onClick={() => {
+              setViewMode('detailed');
+              setUserSelectedMode(true);
+            }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              viewMode === 'detailed'
+                ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30 font-black'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+            }`}
+          >
+            <TableProperties className="w-3.5 h-3.5" />
+            <span>Detailed Table</span>
+          </button>
+        </div>
+      </div>
+
       {/* Standings Table Card */}
       <div className="bg-[#0f1219] border border-slate-800 rounded-xl overflow-hidden shadow-lg">
         <div className="overflow-x-auto">
@@ -211,41 +271,46 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                   </div>
                 </th>
 
-                {/* Won */}
-                <th
-                  onClick={() => handleSort('won')}
-                  className="py-2.5 px-1.5 sm:px-2 text-center text-emerald-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Wins (W)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'won' ? 'font-black' : ''}>W</span>
-                    {renderSortIndicator('won')}
-                  </div>
-                </th>
+                {/* If Detailed: W, D, L */}
+                {viewMode === 'detailed' && (
+                  <>
+                    {/* Won */}
+                    <th
+                      onClick={() => handleSort('won')}
+                      className="py-2.5 px-1.5 sm:px-2 text-center text-emerald-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
+                      title="Sort by Wins (W)"
+                    >
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={sortField === 'won' ? 'font-black' : ''}>W</span>
+                        {renderSortIndicator('won')}
+                      </div>
+                    </th>
 
-                {/* Drawn */}
-                <th
-                  onClick={() => handleSort('drawn')}
-                  className="py-2.5 px-1.5 sm:px-2 text-center text-amber-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Draws (D)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'drawn' ? 'font-black' : ''}>D</span>
-                    {renderSortIndicator('drawn')}
-                  </div>
-                </th>
+                    {/* Drawn */}
+                    <th
+                      onClick={() => handleSort('drawn')}
+                      className="py-2.5 px-1.5 sm:px-2 text-center text-amber-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
+                      title="Sort by Draws (D)"
+                    >
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={sortField === 'drawn' ? 'font-black' : ''}>D</span>
+                        {renderSortIndicator('drawn')}
+                      </div>
+                    </th>
 
-                {/* Lost */}
-                <th
-                  onClick={() => handleSort('lost')}
-                  className="py-2.5 px-1.5 sm:px-2 text-center text-rose-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Losses (L)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'lost' ? 'font-black' : ''}>L</span>
-                    {renderSortIndicator('lost')}
-                  </div>
-                </th>
+                    {/* Lost */}
+                    <th
+                      onClick={() => handleSort('lost')}
+                      className="py-2.5 px-1.5 sm:px-2 text-center text-rose-400 cursor-pointer group/th hover:bg-slate-800/60 transition"
+                      title="Sort by Losses (L)"
+                    >
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={sortField === 'lost' ? 'font-black' : ''}>L</span>
+                        {renderSortIndicator('lost')}
+                      </div>
+                    </th>
+                  </>
+                )}
 
                 {/* Points (PTS) */}
                 <th
@@ -259,29 +324,34 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                   </div>
                 </th>
 
-                {/* GF */}
-                <th
-                  onClick={() => handleSort('goalsFor')}
-                  className="py-2.5 px-1.5 sm:px-2 text-center cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Goals For (GF)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'goalsFor' ? 'text-emerald-400 font-black' : ''}>GF</span>
-                    {renderSortIndicator('goalsFor')}
-                  </div>
-                </th>
+                {/* If Detailed: GF, GA */}
+                {viewMode === 'detailed' && (
+                  <>
+                    {/* GF */}
+                    <th
+                      onClick={() => handleSort('goalsFor')}
+                      className="py-2.5 px-1.5 sm:px-2 text-center cursor-pointer group/th hover:bg-slate-800/60 transition"
+                      title="Sort by Goals For (GF)"
+                    >
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={sortField === 'goalsFor' ? 'text-emerald-400 font-black' : ''}>GF</span>
+                        {renderSortIndicator('goalsFor')}
+                      </div>
+                    </th>
 
-                {/* GA */}
-                <th
-                  onClick={() => handleSort('goalsAgainst')}
-                  className="py-2.5 px-1.5 sm:px-2 text-center cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Goals Against (GA)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'goalsAgainst' ? 'text-emerald-400 font-black' : ''}>GA</span>
-                    {renderSortIndicator('goalsAgainst')}
-                  </div>
-                </th>
+                    {/* GA */}
+                    <th
+                      onClick={() => handleSort('goalsAgainst')}
+                      className="py-2.5 px-1.5 sm:px-2 text-center cursor-pointer group/th hover:bg-slate-800/60 transition"
+                      title="Sort by Goals Against (GA)"
+                    >
+                      <div className="flex items-center justify-center gap-0.5">
+                        <span className={sortField === 'goalsAgainst' ? 'text-emerald-400 font-black' : ''}>GA</span>
+                        {renderSortIndicator('goalsAgainst')}
+                      </div>
+                    </th>
+                  </>
+                )}
 
                 {/* GD */}
                 <th
@@ -372,35 +442,45 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       {row.played}
                     </td>
 
-                    {/* Won */}
-                    <td className="py-2 px-1.5 sm:px-2 text-center font-mono font-semibold text-emerald-400">
-                      {row.won}
-                    </td>
+                    {/* If Detailed: Won, Drawn, Lost */}
+                    {viewMode === 'detailed' && (
+                      <>
+                        {/* Won */}
+                        <td className="py-2 px-1.5 sm:px-2 text-center font-mono font-semibold text-emerald-400">
+                          {row.won}
+                        </td>
 
-                    {/* Drawn */}
-                    <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-amber-400">
-                      {row.drawn}
-                    </td>
+                        {/* Drawn */}
+                        <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-amber-400">
+                          {row.drawn}
+                        </td>
 
-                    {/* Lost */}
-                    <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-rose-400">
-                      {row.lost}
-                    </td>
+                        {/* Lost */}
+                        <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-rose-400">
+                          {row.lost}
+                        </td>
+                      </>
+                    )}
 
                     {/* Points */}
                     <td className="py-2 px-2 sm:px-3 text-center font-mono font-black text-xs sm:text-sm text-emerald-400 bg-emerald-950/20">
                       {row.points}
                     </td>
 
-                    {/* GF */}
-                    <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-slate-300">
-                      {row.goalsFor}
-                    </td>
+                    {/* If Detailed: GF, GA */}
+                    {viewMode === 'detailed' && (
+                      <>
+                        {/* GF */}
+                        <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-slate-300">
+                          {row.goalsFor}
+                        </td>
 
-                    {/* GA */}
-                    <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-slate-400">
-                      {row.goalsAgainst}
-                    </td>
+                        {/* GA */}
+                        <td className="py-2 px-1.5 sm:px-2 text-center font-mono text-slate-400">
+                          {row.goalsAgainst}
+                        </td>
+                      </>
+                    )}
 
                     {/* GD */}
                     <td className="py-2 px-1.5 sm:px-2 text-center font-mono font-bold">

@@ -312,6 +312,10 @@ Located at `src/utils/calculations.ts`, standings are calculated on every match 
 5. **Alphabetical Club Code**: Tie-breaker fallback.
 
 ### Standings Table Features
+* **Dual View Modes (Basic vs Detailed)**:
+  * **Basic View**: Streamlined 5-metric focus displaying `#`, `Club / Team`, `MP`, `PTS`, `GD`, `CS`, `Form` (in exact order). Configured as the responsive default on mobile devices.
+  * **Detailed View**: Complete 11-column breakdown displaying `#`, `Club / Team`, `MP`, `W`, `D`, `L`, `PTS`, `GF`, `GA`, `GD`, `CS`, `Form`. Configured as default on desktop/tablet devices.
+  * **Highlighted Mode Switcher**: Prominently positioned between the search control bar and the standings table with emerald active accents.
 * **Fixed Index Position**: The `#` column always displays ordinal rank (`1` to `21`) based on row order, regardless of user-selected sorting.
 * **Zone Highlighting**:
   * **Ranks 1–4 (UCL Champions Zone)**: Emerald badge & indicator (`#10b981`).
