@@ -350,7 +350,7 @@ Located at `src/utils/calculations.ts`, standings are calculated on every match 
 
 ```
 src/components/
-├── Header.tsx                 # Top navigation, live match count, search, and Admin toggle
+├── Header.tsx                 # Top navigation, live match count, vital stats strip (highlighted League Leader showcase, Attack/Defense leaders), and Admin toggle
 ├── StandingsTable.tsx         # Main league table with qualification zones and form pills
 ├── FixturesView.tsx           # 42-round horizontal scroll carousel & fixture list
 ├── TeamsListView.tsx          # 21-team grid cards with season stats and recent form
