@@ -16,6 +16,7 @@ interface TeamDetailModalProps {
   standingsRow: StandingsRow | null;
   matches: Match[];
   teams: Team[];
+  isAdmin?: boolean;
   onEditMatch: (match: Match) => void;
   onViewMatchDetail?: (match: Match) => void;
 }
@@ -27,6 +28,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   standingsRow,
   matches,
   teams,
+  isAdmin = false,
   onEditMatch,
   onViewMatchDetail,
 }) => {
@@ -169,15 +171,24 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                   else resultTag = 'D';
                 }
 
+                const hasAction = isCompleted || isAdmin;
+                const handleRowClick = () => {
+                  if (isCompleted && onViewMatchDetail) {
+                    onViewMatchDetail(match);
+                  } else if (!isCompleted && isAdmin) {
+                    onEditMatch(match);
+                  }
+                };
+
                 return (
                   <div
                     key={match.id}
-                    onClick={() => {
-                      if (onViewMatchDetail) {
-                        onViewMatchDetail(match);
-                      }
-                    }}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 hover:border-emerald-500/50 text-xs transition cursor-pointer group gap-2 sm:gap-3"
+                    onClick={hasAction ? handleRowClick : undefined}
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 text-xs transition gap-2 sm:gap-3 ${
+                      hasAction
+                        ? 'hover:border-emerald-500/50 cursor-pointer group'
+                        : 'cursor-default'
+                    }`}
                   >
                     {/* Line 1: Match metadata, teams & score/status */}
                     <div className="flex items-center justify-between gap-2 min-w-0 w-full sm:w-auto">
@@ -192,7 +203,9 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                         </span>
                         <div className="flex items-center gap-1.5 min-w-0">
                           {opponent && <TeamLogo team={opponent} size="xs" />}
-                          <strong className="text-white text-xs group-hover:text-emerald-400 transition truncate">
+                          <strong className={`text-white text-xs transition truncate ${
+                            hasAction ? 'group-hover:text-emerald-400' : ''
+                          }`}>
                             {opponent?.clubName}
                           </strong>
                           <span className="text-slate-400 text-[10px] truncate hidden xs:inline">
@@ -233,54 +246,75 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Line 2 on Mobile (with thin divider) / Inline on Desktop */}
-                    <div className="flex items-center justify-end w-full sm:w-auto pt-2 border-t border-slate-800/80 sm:border-t-0 sm:pt-0 gap-2">
-                      {/* Desktop only score & SS badge */}
-                      <div className="hidden sm:flex items-center gap-2">
-                        {match.screenshotUrl && (
-                          <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
-                            <Camera className="w-2.5 h-2.5" />
-                            SS
-                          </span>
-                        )}
+                    {/* Actions / Details: Rendered when completed (View Details) or for admin (Submit) */}
+                    {(isCompleted || isAdmin) ? (
+                      <div className="flex items-center justify-end w-full sm:w-auto pt-2 border-t border-slate-800/80 sm:border-t-0 sm:pt-0 gap-2">
+                        {/* Desktop only score & SS badge */}
+                        <div className="hidden sm:flex items-center gap-2">
+                          {match.screenshotUrl && (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-emerald-300 bg-emerald-950/80 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+                              <Camera className="w-2.5 h-2.5" />
+                              SS
+                            </span>
+                          )}
 
+                          {isCompleted ? (
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[9px] ${
+                                  resultTag === 'W'
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    : resultTag === 'D'
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                }`}
+                              >
+                                {resultTag}
+                              </span>
+                              <span className="font-mono font-bold text-white text-xs">
+                                {match.homeScore} - {match.awayScore}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-500 italic">Scheduled</span>
+                          )}
+                        </div>
+
+                        {/* Button: View Details for completed matches, Submit for unplayed matches by Admin */}
                         {isCompleted ? (
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[9px] ${
-                                resultTag === 'W'
-                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                                  : resultTag === 'D'
-                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                              }`}
-                            >
-                              {resultTag}
-                            </span>
-                            <span className="font-mono font-bold text-white text-xs">
-                              {match.homeScore} - {match.awayScore}
-                            </span>
-                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onViewMatchDetail) {
+                                onViewMatchDetail(match);
+                              }
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-emerald-300 transition text-[11px] sm:text-[10px] font-semibold cursor-pointer active:scale-95"
+                            title="View Match Details & SS"
+                          >
+                            <Eye className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-emerald-400" />
+                            <span>View Details</span>
+                          </button>
                         ) : (
-                          <span className="text-[10px] text-slate-500 italic">Scheduled</span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditMatch(match);
+                            }}
+                            className="inline-flex items-center gap-1 px-3 py-1 sm:py-0.5 rounded bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-bold transition text-[11px] sm:text-[10px] shadow-sm shadow-emerald-500/20 cursor-pointer active:scale-95"
+                            title="Submit Match Result"
+                          >
+                            <Edit3 className="w-3.5 h-3.5 sm:w-3 sm:h-3" />
+                            <span>Submit</span>
+                          </button>
                         )}
                       </div>
-
-                      {/* View Button: positioned at the end of the line */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onViewMatchDetail) {
-                            onViewMatchDetail(match);
-                          }
-                        }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 sm:py-0.5 rounded bg-slate-800/90 hover:bg-slate-700 border border-slate-700/80 text-slate-300 hover:text-emerald-300 transition text-[11px] sm:text-[10px] font-semibold cursor-pointer active:scale-95"
-                        title="View Match Details & SS"
-                      >
-                        <Eye className="w-3.5 h-3.5 sm:w-3 sm:h-3 text-emerald-400" />
-                        <span>View Details</span>
-                      </button>
-                    </div>
+                    ) : (
+                      /* Non-admin on desktop unplayed match: Show clean status on right side without button */
+                      <div className="hidden sm:flex items-center justify-end">
+                        <span className="text-[10px] text-slate-500 italic">Scheduled</span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

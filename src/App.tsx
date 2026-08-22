@@ -430,6 +430,7 @@ export default function App() {
         standingsRow={selectedTeamStandingsRow}
         matches={matches}
         teams={teams}
+        isAdmin={!!adminUser}
         onEditMatch={handleOpenSubmitForMatch}
         onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
       />
