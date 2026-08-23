@@ -244,6 +244,8 @@ export function calculateTeamAttackLeaderboard(
       team: t,
       matchesPlayed: stats.matchesPlayed,
       goalsScored: stats.goalsScored,
+      goalsConceded: stats.goalsConceded,
+      goalDifference: stats.goalsScored - stats.goalsConceded,
       goalsPerMatch,
       highestMatchScore: stats.highestMatchScore,
     };

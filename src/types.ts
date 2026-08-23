@@ -65,6 +65,8 @@ export interface TeamAttackStat {
   team: Team;
   matchesPlayed: number;
   goalsScored: number;
+  goalsConceded?: number;
+  goalDifference?: number;
   goalsPerMatch: number;
   highestMatchScore: number;
 }

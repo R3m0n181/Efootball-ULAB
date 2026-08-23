@@ -18,6 +18,8 @@ import { testFirestoreConnection } from './lib/firebase';
 import {
   calculateStandings,
   getTournamentSummary,
+  calculateTeamAttackLeaderboard,
+  calculateTeamDefenseLeaderboard,
 } from './utils/calculations';
 import { seedSampleMatches } from './utils/sampleData';
 import { getCurrentAdmin, logoutAdmin, AdminUser } from './utils/auth';
@@ -26,6 +28,8 @@ import { Header } from './components/Header';
 import { StandingsTable } from './components/StandingsTable';
 import { FixturesView } from './components/FixturesView';
 import { TeamsListView } from './components/TeamsListView';
+import { AttackRankingView } from './components/AttackRankingView';
+import { DefenseRankingView } from './components/DefenseRankingView';
 import { SubmitResultModal } from './components/SubmitResultModal';
 import { TeamDetailModal } from './components/TeamDetailModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
@@ -48,7 +52,7 @@ export default function App() {
   );
 
   const [activeTab, setActiveTab] = useState<
-    'standings' | 'fixtures' | 'teams'
+    'standings' | 'fixtures' | 'teams' | 'attack' | 'defense'
   >('standings');
 
   // Modal States
@@ -108,6 +112,8 @@ export default function App() {
 
   const standings = calculateStandings(teams, matches, config);
   const summary = getTournamentSummary(matches, standings, teams);
+  const attackStats = calculateTeamAttackLeaderboard(teams, matches);
+  const defenseStats = calculateTeamDefenseLeaderboard(teams, matches);
 
   // Close all active modals/popups across the entire application
   const closeAllModals = () => {
@@ -377,6 +383,22 @@ export default function App() {
           <TeamsListView
             teams={teams}
             standings={standings}
+            onSelectTeam={(team) => handleOpenTeamDetail(team)}
+          />
+        )}
+
+        {/* ATTACK RANKING TAB */}
+        {activeTab === 'attack' && (
+          <AttackRankingView
+            attackStats={attackStats}
+            onSelectTeam={(team) => handleOpenTeamDetail(team)}
+          />
+        )}
+
+        {/* DEFENCE RANKING TAB */}
+        {activeTab === 'defense' && (
+          <DefenseRankingView
+            defenseStats={defenseStats}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
           />
         )}

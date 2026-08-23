@@ -17,8 +17,8 @@ import { AdminUser } from '../utils/auth';
 import { LEAGUE_LOGO } from '../assets/leagueLogo';
 
 interface HeaderProps {
-  activeTab: 'standings' | 'fixtures' | 'teams';
-  setActiveTab: (tab: 'standings' | 'fixtures' | 'teams') => void;
+  activeTab: 'standings' | 'fixtures' | 'teams' | 'attack' | 'defense';
+  setActiveTab: (tab: 'standings' | 'fixtures' | 'teams' | 'attack' | 'defense') => void;
   config: TournamentConfig;
   totalMatches: number;
   completedMatches: number;
@@ -386,6 +386,32 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Shield className="w-3.5 h-3.5" />
               <span>Clubs &amp; Teams</span>
+            </button>
+
+            <button
+              id="tab-attack"
+              onClick={() => setActiveTab('attack')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'attack'
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 shadow-sm shadow-amber-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <Flame className="w-3.5 h-3.5 text-amber-400" />
+              <span>Attack</span>
+            </button>
+
+            <button
+              id="tab-defense"
+              onClick={() => setActiveTab('defense')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'defense'
+                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 shadow-sm shadow-cyan-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Defence</span>
             </button>
           </div>
 
