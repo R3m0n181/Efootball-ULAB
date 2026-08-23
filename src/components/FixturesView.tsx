@@ -281,11 +281,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
             return (
               <div
                 key={match.id}
-                onClick={() => onViewMatchDetail(match)}
-                className={`rounded-xl p-3.5 transition duration-200 flex flex-col justify-between relative overflow-hidden group cursor-pointer ${
+                onClick={isCompleted ? () => onViewMatchDetail(match) : undefined}
+                className={`rounded-xl p-3.5 transition duration-200 flex flex-col justify-between relative overflow-hidden group ${
                   isCompleted
-                    ? 'bg-gradient-to-b from-[#0c1f1c] via-[#0e1722] to-[#0a1318] border-2 border-emerald-500/70 shadow-lg shadow-emerald-950/50 hover:border-emerald-400 hover:shadow-emerald-900/50 ring-1 ring-emerald-500/30'
-                    : 'bg-[#0f1219] border border-slate-800 hover:border-slate-700 hover:border-emerald-500/30 shadow-md'
+                    ? 'bg-gradient-to-b from-[#0c1f1c] via-[#0e1722] to-[#0a1318] border-2 border-emerald-500/70 shadow-lg shadow-emerald-950/50 hover:border-emerald-400 hover:shadow-emerald-900/50 ring-1 ring-emerald-500/30 cursor-pointer'
+                    : 'bg-[#0f1219] border border-slate-800 hover:border-slate-700/80 shadow-md'
                 }`}
               >
                 {/* Ambient glow for completed matches */}
@@ -320,8 +320,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                         Completed
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.2 rounded-full font-mono">
-                        <Clock className="w-3 h-3" />
+                      <span className="inline-flex items-center gap-1 text-[9px] font-medium text-slate-400 bg-slate-900/90 border border-slate-800 px-2 py-0.5 rounded-full font-mono">
+                        <Clock className="w-3 h-3 text-slate-500" />
                         Scheduled
                       </span>
                     )}
@@ -416,40 +416,63 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                 )}
 
                 {/* Match Card Bottom Actions */}
-                <div className={`mt-2.5 pt-2 border-t flex items-center justify-end gap-1.5 ${
-                  isCompleted ? 'border-emerald-800/40' : 'border-slate-800/60'
-                }`}>
-                  {isAdmin && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEditMatch(match);
-                      }}
-                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                        isCompleted
-                          ? 'text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/50'
-                          : 'text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-sm shadow-emerald-500/20'
-                      }`}
-                    >
-                      <Edit3 className="w-3.5 h-3.5" />
-                      <span>{isCompleted ? 'Edit' : 'Submit'}</span>
-                    </button>
-                  )}
+                <div
+                  className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-1.5 ${
+                    isCompleted ? 'border-emerald-800/40' : 'border-slate-800/60'
+                  }`}
+                >
+                  {isCompleted ? (
+                    <>
+                      <div className="flex items-center gap-1 text-[11px] text-emerald-400/80 font-mono">
+                        <span>Full Time</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {isAdmin && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onEditMatch(match);
+                            }}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/50"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onViewMatchDetail(match);
-                    }}
-                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                      isCompleted
-                        ? 'bg-[#081518] hover:bg-[#0c1f24] border border-emerald-700/50 text-emerald-300 hover:text-emerald-200'
-                        : 'bg-[#0a0c10] hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-emerald-400'
-                    }`}
-                  >
-                    <Eye className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Match Details</span>
-                  </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewMatchDetail(match);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer bg-[#081518] hover:bg-[#0c1f24] border border-emerald-700/50 text-emerald-300 hover:text-emerald-200"
+                        >
+                          <Eye className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Match Details</span>
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                        <span>Scheduled</span>
+                      </div>
+
+                      {isAdmin && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditMatch(match);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer text-slate-950 bg-emerald-400 hover:bg-emerald-300 shadow-sm shadow-emerald-500/20 ml-auto"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Submit Score</span>
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             );
