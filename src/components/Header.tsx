@@ -26,6 +26,7 @@ interface HeaderProps {
   avgGoals: string;
   leader: StandingsRow | null;
   topScoringTeam?: TeamAttackStat | null;
+  topDefendingTeam?: TeamDefenseStat | null;
   mostCleanSheetsTeam?: TeamDefenseStat | null;
   adminUser: AdminUser | null;
   isCloudSynced?: boolean;
@@ -46,6 +47,7 @@ export const Header: React.FC<HeaderProps> = ({
   avgGoals,
   leader,
   topScoringTeam,
+  topDefendingTeam,
   mostCleanSheetsTeam,
   adminUser,
   isCloudSynced = true,
@@ -55,6 +57,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSettingsModal,
   onSelectTeam,
 }) => {
+  const defendingTeam = topDefendingTeam || mostCleanSheetsTeam;
   const progressPercent = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
 
   return (
@@ -250,7 +253,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Under League Leader: Top Scoring Team & Most Clean Sheets Team */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {/* Top Scoring Team */}
+            {/* Top Attacking Team */}
             <div
               onClick={() => topScoringTeam && onSelectTeam && onSelectTeam(topScoringTeam.team)}
               className={`bg-[#0f1219] border border-slate-800/90 rounded-lg p-2 flex items-center gap-2.5 ${
@@ -265,35 +268,40 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="min-w-0 flex-1 flex items-center justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Top Scoring Team</span>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Top Attacking Team</span>
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-mono font-bold">ATTACK</span>
                   </div>
-                  <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5 mt-0.5">
-                    {topScoringTeam && completedMatches > 0 ? (
-                      <>
+                  {/* Team & Player info stacked */}
+                  {topScoringTeam && completedMatches > 0 ? (
+                    <div className="mt-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <TeamLogo team={topScoringTeam.team} size="xs" />
-                        <span className="text-amber-400 hover:underline">{topScoringTeam.team.clubName}</span>
-                        <span className="text-slate-400 text-xs font-normal">({topScoringTeam.team.managerName})</span>
-                      </>
-                    ) : (
-                      <span className="text-slate-400 text-xs font-normal">Awaiting completed matches</span>
-                    )}
-                  </div>
+                        <span className="text-xs sm:text-sm font-bold text-amber-400 hover:underline truncate">
+                          {topScoringTeam.team.clubName}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-medium truncate pl-[22px] -mt-0.5">
+                        {topScoringTeam.team.managerName}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-xs font-normal mt-0.5">Awaiting completed matches</div>
+                  )}
                 </div>
                 {topScoringTeam && completedMatches > 0 && (
                   <div className="text-right pl-2 font-mono shrink-0">
-                    <div className="text-xs font-bold text-amber-400">{topScoringTeam.goalsScored} Goals</div>
-                    <div className="text-[10px] text-slate-400">{topScoringTeam.goalsPerMatch} / gm</div>
+                    <div className="text-xs font-bold text-amber-400">{topScoringTeam.goalsPerMatch} Goals/gm</div>
+                    <div className="text-[10px] text-slate-400">{topScoringTeam.goalsScored} GF • {topScoringTeam.matchesPlayed} matches</div>
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Most Clean Sheets Team */}
+            {/* Top Defending Team */}
             <div
-              onClick={() => mostCleanSheetsTeam && onSelectTeam && onSelectTeam(mostCleanSheetsTeam.team)}
+              onClick={() => defendingTeam && onSelectTeam && onSelectTeam(defendingTeam.team)}
               className={`bg-[#0f1219] border border-slate-800/90 rounded-lg p-2 flex items-center gap-2.5 ${
-                mostCleanSheetsTeam && completedMatches > 0 && onSelectTeam
+                defendingTeam && completedMatches > 0 && onSelectTeam
                   ? 'hover:border-cyan-500/50 hover:bg-[#141822] cursor-pointer transition'
                   : ''
               }`}
@@ -304,25 +312,30 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="min-w-0 flex-1 flex items-center justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Most Clean Sheets</span>
+                    <span className="text-[10px] text-slate-400 font-medium uppercase tracking-tight">Top Defending Team</span>
                     <span className="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 font-mono font-bold">DEFENSE</span>
                   </div>
-                  <div className="text-xs sm:text-sm font-bold text-white truncate flex items-center gap-1.5 mt-0.5">
-                    {mostCleanSheetsTeam && completedMatches > 0 ? (
-                      <>
-                        <TeamLogo team={mostCleanSheetsTeam.team} size="xs" />
-                        <span className="text-cyan-400 hover:underline">{mostCleanSheetsTeam.team.clubName}</span>
-                        <span className="text-slate-400 text-xs font-normal">({mostCleanSheetsTeam.team.managerName})</span>
-                      </>
-                    ) : (
-                      <span className="text-slate-400 text-xs font-normal">Awaiting completed matches</span>
-                    )}
-                  </div>
+                  {/* Team & Player info stacked */}
+                  {defendingTeam && completedMatches > 0 ? (
+                    <div className="mt-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <TeamLogo team={defendingTeam.team} size="xs" />
+                        <span className="text-xs sm:text-sm font-bold text-cyan-400 hover:underline truncate">
+                          {defendingTeam.team.clubName}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 font-medium truncate pl-[22px] -mt-0.5">
+                        {defendingTeam.team.managerName}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-slate-400 text-xs font-normal mt-0.5">Awaiting completed matches</div>
+                  )}
                 </div>
-                {mostCleanSheetsTeam && completedMatches > 0 && (
+                {defendingTeam && completedMatches > 0 && (
                   <div className="text-right pl-2 font-mono shrink-0">
-                    <div className="text-xs font-bold text-cyan-400">{mostCleanSheetsTeam.cleanSheets} Clean Sheets</div>
-                    <div className="text-[10px] text-slate-400">{mostCleanSheetsTeam.cleanSheetPct}% CS rate</div>
+                    <div className="text-xs font-bold text-cyan-400">{defendingTeam.goalsConcededPerMatch} Conceded/gm</div>
+                    <div className="text-[10px] text-slate-400">{defendingTeam.goalsConceded} GA • {defendingTeam.cleanSheets} CS</div>
                   </div>
                 )}
               </div>

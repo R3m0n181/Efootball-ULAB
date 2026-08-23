@@ -199,6 +199,7 @@ export function calculateTeamAttackLeaderboard(
     {
       matchesPlayed: number;
       goalsScored: number;
+      goalsConceded: number;
       highestMatchScore: number;
     }
   >();
@@ -207,6 +208,7 @@ export function calculateTeamAttackLeaderboard(
     statsMap.set(t.id, {
       matchesPlayed: 0,
       goalsScored: 0,
+      goalsConceded: 0,
       highestMatchScore: 0,
     });
   });
@@ -220,10 +222,12 @@ export function calculateTeamAttackLeaderboard(
       if (hStats && aStats && m.homeScore !== null && m.awayScore !== null) {
         hStats.matchesPlayed += 1;
         hStats.goalsScored += m.homeScore;
+        hStats.goalsConceded += m.awayScore;
         hStats.highestMatchScore = Math.max(hStats.highestMatchScore, m.homeScore);
 
         aStats.matchesPlayed += 1;
         aStats.goalsScored += m.awayScore;
+        aStats.goalsConceded += m.homeScore;
         aStats.highestMatchScore = Math.max(aStats.highestMatchScore, m.awayScore);
       }
     });
@@ -246,9 +250,44 @@ export function calculateTeamAttackLeaderboard(
   });
 
   list.sort((a, b) => {
-    if (b.goalsScored !== a.goalsScored) return b.goalsScored - a.goalsScored;
-    if (b.goalsPerMatch !== a.goalsPerMatch) return b.goalsPerMatch - a.goalsPerMatch;
-    if (b.highestMatchScore !== a.highestMatchScore) return b.highestMatchScore - a.highestMatchScore;
+    // Option 1 Formula for Top Attacking Team:
+    // 1. Teams that have played at least 1 match take precedence over 0-match teams
+    if (a.matchesPlayed === 0 && b.matchesPlayed > 0) return 1;
+    if (b.matchesPlayed === 0 && a.matchesPlayed > 0) return -1;
+    if (a.matchesPlayed === 0 && b.matchesPlayed === 0) {
+      return a.team.clubName.localeCompare(b.team.clubName);
+    }
+
+    // 2. Primary Metric: Highest average goals scored per match (GF / P)
+    if (b.goalsPerMatch !== a.goalsPerMatch) {
+      return b.goalsPerMatch - a.goalsPerMatch;
+    }
+
+    // 3. Tiebreaker 1: Highest total Goals Scored (GF)
+    if (b.goalsScored !== a.goalsScored) {
+      return b.goalsScored - a.goalsScored;
+    }
+
+    // 4. Tiebreaker 2: Highest Goal Difference (GD)
+    const aStats = statsMap.get(a.team.id)!;
+    const bStats = statsMap.get(b.team.id)!;
+    const aGD = aStats.goalsScored - aStats.goalsConceded;
+    const bGD = bStats.goalsScored - bStats.goalsConceded;
+    if (bGD !== aGD) {
+      return bGD - aGD;
+    }
+
+    // 5. Tiebreaker 3: Most Matches Played
+    if (b.matchesPlayed !== a.matchesPlayed) {
+      return b.matchesPlayed - a.matchesPlayed;
+    }
+
+    // 6. Tiebreaker 4: Highest single match score
+    if (b.highestMatchScore !== a.highestMatchScore) {
+      return b.highestMatchScore - a.highestMatchScore;
+    }
+
+    // 7. Alphabetical
     return a.team.clubName.localeCompare(b.team.clubName);
   });
 
@@ -323,9 +362,35 @@ export function calculateTeamDefenseLeaderboard(
   });
 
   list.sort((a, b) => {
-    // Fewer goals conceded per match is better (only when matches played > 0)
-    if (b.cleanSheets !== a.cleanSheets) return b.cleanSheets - a.cleanSheets;
-    if (a.goalsConceded !== b.goalsConceded) return a.goalsConceded - b.goalsConceded;
+    // Option 1 Formula for Top Defending Team:
+    // 1. Teams that have played at least 1 match take precedence over 0-match teams
+    if (a.matchesPlayed === 0 && b.matchesPlayed > 0) return 1;
+    if (b.matchesPlayed === 0 && a.matchesPlayed > 0) return -1;
+    if (a.matchesPlayed === 0 && b.matchesPlayed === 0) {
+      return a.team.clubName.localeCompare(b.team.clubName);
+    }
+
+    // 2. Primary Metric: Lowest average goals conceded per match (GA / P)
+    if (a.goalsConcededPerMatch !== b.goalsConcededPerMatch) {
+      return a.goalsConcededPerMatch - b.goalsConcededPerMatch;
+    }
+
+    // 3. Tiebreaker 1: Most Clean Sheets (CS)
+    if (b.cleanSheets !== a.cleanSheets) {
+      return b.cleanSheets - a.cleanSheets;
+    }
+
+    // 4. Tiebreaker 2: Lowest absolute Goals Conceded (GA)
+    if (a.goalsConceded !== b.goalsConceded) {
+      return a.goalsConceded - b.goalsConceded;
+    }
+
+    // 5. Tiebreaker 3: Most Matches Played (tested defense)
+    if (b.matchesPlayed !== a.matchesPlayed) {
+      return b.matchesPlayed - a.matchesPlayed;
+    }
+
+    // 6. Alphabetical
     return a.team.clubName.localeCompare(b.team.clubName);
   });
 
@@ -399,19 +464,19 @@ export function getTournamentSummary(
   const leader = standings.length > 0 ? standings[0] : null;
 
   let topScoringTeam: TeamAttackStat | null = null;
-  let mostCleanSheetsTeam: TeamDefenseStat | null = null;
+  let topDefendingTeam: TeamDefenseStat | null = null;
 
   const actualTeams = teams && teams.length > 0 ? teams : standings.map((s) => s.team);
 
   if (actualTeams.length > 0 && completedMatches.length > 0) {
     const attackList = calculateTeamAttackLeaderboard(actualTeams, matches);
-    if (attackList.length > 0 && attackList[0].goalsScored > 0) {
+    if (attackList.length > 0 && attackList[0].matchesPlayed > 0) {
       topScoringTeam = attackList[0];
     }
 
     const defenseList = calculateTeamDefenseLeaderboard(actualTeams, matches);
-    if (defenseList.length > 0) {
-      mostCleanSheetsTeam = defenseList[0];
+    if (defenseList.length > 0 && defenseList[0].matchesPlayed > 0) {
+      topDefendingTeam = defenseList[0];
     }
   }
 
@@ -424,6 +489,7 @@ export function getTournamentSummary(
     avgGoals,
     leader,
     topScoringTeam,
-    mostCleanSheetsTeam,
+    topDefendingTeam,
+    mostCleanSheetsTeam: topDefendingTeam,
   };
 }

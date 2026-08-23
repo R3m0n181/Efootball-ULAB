@@ -332,6 +332,7 @@ export default function App() {
         avgGoals={summary.avgGoals}
         leader={summary.leader}
         topScoringTeam={summary.topScoringTeam}
+        topDefendingTeam={summary.topDefendingTeam}
         mostCleanSheetsTeam={summary.mostCleanSheetsTeam}
         adminUser={adminUser}
         isCloudSynced={isCloudSynced}
