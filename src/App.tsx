@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { Activity, Settings } from 'lucide-react';
 import {
   loadTournamentState,
   saveTournamentState,
@@ -344,7 +345,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 lg:px-6 py-3.5">
+      <main id="tournament-main-workspace" className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 lg:px-6 py-3.5">
         {/* STANDINGS TABLE TAB */}
         {activeTab === 'standings' && (
           <StandingsTable
@@ -381,18 +382,55 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-800/80 bg-[#0f1219] py-2.5 text-center text-[11px] text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-1.5">
-          <span>eFootball Mobile Premier League Portal • 21 Participating Teams</span>
-          <div className="flex items-center gap-2.5 text-slate-400">
-            <span className="text-emerald-400">Home &amp; Away Schedule Active</span>
-            <span>•</span>
-            <button
-              onClick={handleOpenSettingsModal}
-              className="hover:text-emerald-400 underline transition cursor-pointer"
-            >
-              League Settings &amp; Export
-            </button>
+      <footer className="border-t border-slate-800 bg-[#0a0c10] py-3.5 text-xs text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2.5">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2.5 text-center md:text-left">
+            {/* Precise Tournament Spec */}
+            <div className="space-y-0.5">
+              <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap text-white font-medium text-xs">
+                <span className="text-emerald-400 font-bold font-mono">eFootball Mobile</span>
+                <span className="text-slate-600">•</span>
+                <span>21 Participating Clubs</span>
+                <span className="text-slate-600">•</span>
+                <span>Double Round-Robin Format (42 Matchdays)</span>
+              </div>
+              <p className="text-[11px] text-slate-400">
+                Official 420-fixture season (20 Home &amp; 20 Away matches per club) • Win = 3 Pts, Draw = 1 Pt, Loss = 0 Pts
+              </p>
+            </div>
+
+            {/* Quick Live Stats & Controls */}
+            <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end text-[11px]">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-slate-300">
+                <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  Season Progress:{' '}
+                  <strong className="text-white font-mono">{summary.completedMatches}</strong> /{' '}
+                  {summary.totalMatches} Fixtures ({summary.progressPercentage}%)
+                </span>
+              </div>
+
+              <button
+                onClick={handleOpenSettingsModal}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/60 rounded-lg transition cursor-pointer"
+                title="Open League Settings & Data Backup"
+              >
+                <Settings className="w-3 h-3 text-slate-400" />
+                <span>League Settings &amp; Backup</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-800/60 flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[10px] text-slate-400">
+            <div>
+              Tip: Click on any club in the Standings or Teams view to inspect squad managers, head-to-head records, and full fixture history.
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1 text-emerald-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Real-time Sync Active
+              </span>
+            </div>
           </div>
         </div>
       </footer>
@@ -453,7 +491,6 @@ export default function App() {
         teams={teams}
         onSaveConfig={handleSaveConfig}
         onResetSchedule={handleResetSchedule}
-        onSeedSampleData={handleSeedSampleData}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
       />

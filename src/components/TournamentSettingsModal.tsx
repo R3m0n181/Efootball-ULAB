@@ -2,13 +2,10 @@ import React, { useState } from 'react';
 import {
   X,
   Settings,
-  RotateCcw,
-  Sparkles,
   Download,
   Upload,
   Save,
-  AlertTriangle,
-  CheckCircle2,
+  Calendar,
 } from 'lucide-react';
 import { TournamentConfig, Team } from '../types';
 
@@ -19,7 +16,6 @@ interface TournamentSettingsModalProps {
   teams: Team[];
   onSaveConfig: (config: TournamentConfig) => void;
   onResetSchedule: (isDouble: boolean) => void;
-  onSeedSampleData: () => void;
   onExportJson: () => void;
   onImportJson: (jsonString: string) => void;
 }
@@ -31,7 +27,6 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   teams,
   onSaveConfig,
   onResetSchedule,
-  onSeedSampleData,
   onExportJson,
   onImportJson,
 }) => {
@@ -62,17 +57,6 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
     onClose();
   };
 
-  const handleReset = (isDouble: boolean) => {
-    if (
-      window.confirm(
-        `Are you sure you want to regenerate the tournament schedule for all 21 teams? This will reset all current match scores to 0.`
-      )
-    ) {
-      onResetSchedule(isDouble);
-      onClose();
-    }
-  };
-
   const handleImportSubmit = () => {
     try {
       if (!importText.trim()) return;
@@ -97,13 +81,13 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
               <Settings className="w-3.5 h-3.5" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white">Tournament Admin & Settings</h3>
-              <p className="text-[10px] text-slate-400">Manage league format, rules, and backups</p>
+              <h3 className="text-xs sm:text-sm font-bold text-white">Tournament Admin &amp; Settings</h3>
+              <p className="text-[10px] text-slate-400">League format, rules, and data backups</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition"
+            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
           >
             <X className="w-3.5 h-3.5" />
           </button>
@@ -139,8 +123,41 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
             </div>
           </div>
 
+          {/* Tournament Format & Structure */}
+          <div className="space-y-2 pt-2 border-t border-slate-800">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Tournament Schedule &amp; Format
+              </h4>
+              <span className="px-2 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-[9px] font-bold text-emerald-300 font-mono">
+                Double Round-Robin
+              </span>
+            </div>
+
+            {/* Format Description Card */}
+            <div className="p-3 bg-[#0a0c10] border border-slate-800/80 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center gap-2 text-white font-semibold">
+                <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>21 Teams • Double Round-Robin Format (42 Matchdays)</span>
+              </div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                This tournament follows a double round-robin system where all 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds).
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-1 text-[10px] text-slate-300">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Total Fixtures: <strong className="text-white font-mono">420 Matches</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  <span>Matches per Club: <strong className="text-white font-mono">40 Matches</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Points System */}
-          <div className="space-y-2">
+          <div className="space-y-2 pt-2 border-t border-slate-800">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
               League Points System
             </h4>
@@ -175,66 +192,17 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
             </div>
           </div>
 
-          {/* Format & Schedule Actions */}
-          <div className="space-y-2.5 pt-2 border-t border-slate-800">
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Schedule & Format Controls
-            </h4>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => handleReset(false)}
-                className="p-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 hover:border-emerald-500/50 flex flex-col items-start gap-0.5 transition text-left group"
-              >
-                <div className="flex items-center gap-1.5 font-bold text-white group-hover:text-emerald-400">
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Single Round-Robin (21 Rds)</span>
-                </div>
-                <span className="text-[9px] text-slate-500">
-                  Each manager plays every other manager once (20 matches each).
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleReset(true)}
-                className="p-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 hover:border-emerald-500/50 flex flex-col items-start gap-0.5 transition text-left group"
-              >
-                <div className="flex items-center gap-1.5 font-bold text-white group-hover:text-emerald-400">
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Double Round-Robin (42 Rds)</span>
-                </div>
-                <span className="text-[9px] text-slate-500">
-                  Home and away legs against all 20 opponents (40 matches each).
-                </span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => {
-                onSeedSampleData();
-                onClose();
-              }}
-              className="w-full py-2 px-3 rounded-lg bg-[#0a0c10] border border-amber-500/30 hover:bg-amber-950/20 text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Seed Sample Match Results (Populates R1 &amp; R2 scores)</span>
-            </button>
-          </div>
-
           {/* Backup & Restore */}
           <div className="space-y-2 pt-2 border-t border-slate-800">
             <h4 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Data Backup & Restore
+              Data Backup &amp; Restore
             </h4>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onExportJson}
-                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 hover:bg-slate-800 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition"
+                className="flex-1 py-1.5 px-2.5 rounded-lg bg-[#0a0c10] border border-slate-800 hover:bg-slate-800 text-slate-200 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
               >
                 <Download className="w-3 h-3 text-emerald-400" />
                 <span>Export Tournament Data (JSON)</span>
@@ -256,7 +224,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
                 type="button"
                 onClick={handleImportSubmit}
                 disabled={!importText.trim()}
-                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold rounded-lg transition inline-flex items-center gap-1 text-xs"
+                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-200 font-bold rounded-lg transition inline-flex items-center gap-1 text-xs cursor-pointer"
               >
                 <Upload className="w-3 h-3 text-emerald-400" />
                 <span>Import JSON</span>
@@ -273,7 +241,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition"
+            className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
           >
             Cancel
           </button>

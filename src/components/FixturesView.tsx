@@ -89,7 +89,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
   const byeTeam = byeTeamId ? teamMap.get(byeTeamId) : null;
 
   return (
-    <div className="space-y-3">
+    <div id="tournament-fixtures-container" className="space-y-3">
       {/* Round Selection Bar */}
       <div className="bg-[#0f1219] border border-slate-800 p-2.5 rounded-xl shadow-md">
         <div className="flex items-center justify-between gap-2 mb-2">

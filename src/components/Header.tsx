@@ -4,7 +4,6 @@ import {
   Calendar,
   Shield,
   ShieldCheck,
-  PlusCircle,
   Settings,
   Flame,
   Lock,
@@ -126,17 +125,6 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Lock className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Admin Login</span>
-              </button>
-            )}
-
-            {adminUser && (
-              <button
-                id="header-submit-result-btn"
-                onClick={onOpenSubmitModal}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-gradient-to-r from-emerald-400 to-teal-300 hover:from-emerald-300 hover:to-teal-200 rounded-lg transition shadow-md shadow-emerald-500/20 active:scale-95 cursor-pointer"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                <span>Submit Match Score</span>
               </button>
             )}
 

@@ -8,6 +8,14 @@ import {
   RotateCcw,
   LayoutList,
   TableProperties,
+  Info,
+  Trophy,
+  Scale,
+  Calendar,
+  Shield,
+  Activity,
+  CheckCircle2,
+  HelpCircle,
 } from 'lucide-react';
 import { StandingsRow, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -160,7 +168,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   };
 
   return (
-    <div className="space-y-3">
+    <div id="standings-table-container" className="space-y-3">
       {/* Control bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#0f1219] p-2.5 rounded-xl border border-slate-800">
         <div className="relative flex-1 max-w-md">
@@ -193,7 +201,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
         </div>
       </div>
 
-      {/* Highlighted View Mode Tabs (Basic vs Detailed) */}
+      {/* Highlighted View Mode Tabs */}
       <div className="flex items-center">
         <div className="inline-flex items-center p-1 bg-[#0a0c10] rounded-xl border-2 border-emerald-500/40 shadow-md shadow-emerald-950/40 w-full sm:w-auto">
           <button
@@ -538,32 +546,173 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
           </table>
         </div>
 
-        {/* Table Footer Legend */}
-        <div className="bg-[#0a0c10]/90 px-3.5 py-2.5 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] text-slate-400">
+        {/* Table Footer Legend Bar */}
+        <div className="bg-[#0a0c10]/90 px-3.5 py-3 border-t border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-[11px] text-slate-400">
           <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-sm bg-amber-500" />
-              <span className="text-slate-300 font-medium">1st Place: League Champions</span>
+            <div className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded">
+              <span className="w-2 h-2 rounded-sm bg-amber-500 shadow-sm shadow-amber-500/50" />
+              <span className="text-amber-300 font-semibold">1st Place: League Champions</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500">Double Round-Robin (Home & Away) • Click any column header to sort</span>
+            <div className="flex items-center gap-1 text-slate-400">
+              <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Double Round-Robin (Home &amp; Away)</span>
+            </div>
+            <span className="text-slate-600 hidden sm:inline">•</span>
+            <div className="flex items-center gap-1 text-slate-400">
+              <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+              <span>Click any column header to sort</span>
             </div>
           </div>
 
-          {isAdmin ? (
-            <button
-              onClick={onOpenSubmitModal}
-              className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 transition cursor-pointer"
-            >
-              <span>Submit match result</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          ) : (
-            <div className="text-[11px] text-slate-400 flex items-center gap-1">
-              <span>Click on any team row to view detailed team stats &amp; fixtures</span>
-              <ChevronRight className="w-3 h-3 text-emerald-400" />
+          <div className="text-[11px] text-slate-400 flex items-center gap-1.5 self-end sm:self-auto">
+            <span>Click any team row for detailed stats</span>
+            <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+        </div>
+      </div>
+
+      {/* COMPREHENSIVE LEAGUE INFORMATION & RULES (BELOW STANDINGS TABLE) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+        {/* Card 1: Format & Points System */}
+        <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                <Trophy className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Tournament Format</h4>
+                <p className="text-[10px] text-slate-400">21 Teams • Double Round-Robin</p>
+              </div>
             </div>
-          )}
+
+            <div className="space-y-1.5 text-xs text-slate-300">
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Total Matchdays:</span>
+                <span className="font-semibold text-white font-mono">42 Matchdays</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Fixtures per Club:</span>
+                <span className="font-semibold text-white font-mono">40 Matches (20 H / 20 A)</span>
+              </div>
+              <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
+                <span className="text-slate-400">Bye Matchdays:</span>
+                <span className="font-semibold text-slate-300 font-mono">2 Bye Rounds / Team</span>
+              </div>
+              <div className="flex items-center justify-between py-1">
+                <span className="text-slate-400">Points System:</span>
+                <span className="font-semibold text-emerald-400 font-mono">Win: 3 • Draw: 1 • Loss: 0</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 flex items-center gap-1.5">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Table auto-updates instantly upon match score confirmation.</span>
+          </div>
+        </div>
+
+        {/* Card 2: Official Tiebreaker Rules */}
+        <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <Scale className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Tiebreaker Ranking</h4>
+                <p className="text-[10px] text-slate-400">Official ranking priority order</p>
+              </div>
+            </div>
+
+            <ol className="space-y-1.5 text-xs text-slate-300 list-decimal list-inside">
+              <li className="py-0.5">
+                <span className="font-semibold text-white">Points (Pts):</span>{' '}
+                <span className="text-slate-400">Highest accumulated points</span>
+              </li>
+              <li className="py-0.5">
+                <span className="font-semibold text-white">Goal Difference (GD):</span>{' '}
+                <span className="text-slate-400">Goals For minus Goals Against</span>
+              </li>
+              <li className="py-0.5">
+                <span className="font-semibold text-white">Goals For (GF):</span>{' '}
+                <span className="text-slate-400">Highest total goals scored</span>
+              </li>
+              <li className="py-0.5">
+                <span className="font-semibold text-white">Head-to-Head (H2H):</span>{' '}
+                <span className="text-slate-400">Record in direct fixtures</span>
+              </li>
+              <li className="py-0.5">
+                <span className="font-semibold text-white">Clean Sheets (CS) / Wins (W):</span>{' '}
+                <span className="text-slate-400">Most clean sheets &amp; total wins</span>
+              </li>
+            </ol>
+          </div>
+
+          <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 flex items-center gap-1.5">
+            <Info className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span>Strict tiebreaker sequence ensures fair ranking at all times.</span>
+          </div>
+        </div>
+
+        {/* Card 3: Column Guide & Glossary */}
+        <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-3.5 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-teal-500/10 border border-teal-500/20 text-teal-400">
+                <HelpCircle className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Column Glossary</h4>
+                <p className="text-[10px] text-slate-400">Metric abbreviations explained</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs text-slate-300">
+              <div>
+                <span className="font-bold text-white font-mono">Pos:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Rank #</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">P:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Played</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">W / D / L:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Results</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">GF:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Goals For</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">GA:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Against</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">GD:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Goal Diff (+/-)</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">CS:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Clean Sheets</span>
+              </div>
+              <div>
+                <span className="font-bold text-white font-mono">Pts:</span>{' '}
+                <span className="text-slate-400 text-[11px]">Points Total</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-2.5 pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 flex items-center justify-between">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[8px] font-bold inline-flex items-center justify-center font-mono">W</span>
+              <span className="w-3 h-3 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[8px] font-bold inline-flex items-center justify-center font-mono">D</span>
+              <span className="w-3 h-3 rounded bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[8px] font-bold inline-flex items-center justify-center font-mono">L</span>
+              <span className="ml-1">Form (Last 5)</span>
+            </span>
+            <span className="text-slate-500">Newest → Oldest</span>
+          </div>
         </div>
       </div>
     </div>
