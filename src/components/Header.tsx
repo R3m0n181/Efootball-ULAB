@@ -97,7 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
                 {config.name}
               </h1>
               <p className="text-[11px] text-slate-400">
-                21 Teams • Home & Away System (42 Matchdays) • Premier League Format
+                21 Teams. Double Round-Robin Format (42 Matchdays)
               </p>
             </div>
           </div>
@@ -342,46 +342,54 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Primary Navigation Tabs */}
-        <div className="mt-2.5 flex items-center gap-1 overflow-x-auto pb-0.5 no-scrollbar border-b border-slate-800/40">
-          <button
-            id="tab-standings"
-            onClick={() => setActiveTab('standings')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
-              activeTab === 'standings'
-                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
-            }`}
-          >
-            <Trophy className="w-3.5 h-3.5" />
-            <span>Standings Table</span>
-          </button>
+        {/* Primary Navigation Tabs with Highlighted Over & Under Dividers */}
+        <div className="mt-3">
+          {/* Highlighted divider line OVER the tab selection */}
+          <div className="h-[2px] w-full bg-gradient-to-r from-emerald-500/20 via-emerald-400/90 to-emerald-500/20 shadow-[0_0_12px_rgba(52,211,153,0.5)]" />
 
-          <button
-            id="tab-fixtures"
-            onClick={() => setActiveTab('fixtures')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
-              activeTab === 'fixtures'
-                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Fixtures &amp; Schedule (Home &amp; Away)</span>
-          </button>
+          <div className="py-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            <button
+              id="tab-standings"
+              onClick={() => setActiveTab('standings')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'standings'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <Trophy className="w-3.5 h-3.5" />
+              <span>Standings Table</span>
+            </button>
 
-          <button
-            id="tab-teams"
-            onClick={() => setActiveTab('teams')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
-              activeTab === 'teams'
-                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 shadow-sm'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            <span>Clubs &amp; Teams</span>
-          </button>
+            <button
+              id="tab-fixtures"
+              onClick={() => setActiveTab('fixtures')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'fixtures'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Fixtures &amp; Schedule (Home &amp; Away)</span>
+            </button>
+
+            <button
+              id="tab-teams"
+              onClick={() => setActiveTab('teams')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'teams'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Clubs &amp; Teams</span>
+            </button>
+          </div>
+
+          {/* Highlighted divider line UNDER the tab selection */}
+          <div className="h-[2px] w-full bg-gradient-to-r from-emerald-500/20 via-emerald-400/90 to-emerald-500/20 shadow-[0_0_12px_rgba(52,211,153,0.5)]" />
         </div>
       </div>
     </header>
