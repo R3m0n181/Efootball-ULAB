@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Calendar,
   CheckCircle2,
@@ -38,17 +38,51 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
   onViewMatchDetail,
   isAdmin = false,
 }) => {
-  const [selectedRound, setSelectedRound] = useState<number>(1);
-  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'scheduled'>('all');
+  // Total rounds (42 for 21 teams in Home & Away double round-robin)
+  const totalRounds = config.totalRounds || 42;
+  const roundsArray = Array.from({ length: totalRounds }, (_, i) => i + 1);
+
+  // Compute earliest incomplete matchday (the first round with pending/unplayed matches)
+  const earliestIncompleteRound = useMemo(() => {
+    for (let r = 1; r <= totalRounds; r++) {
+      const roundMatchList = matches.filter((m) => m.round === r);
+      const isCompleted =
+        roundMatchList.length > 0 &&
+        roundMatchList.every((m) => m.status === 'completed');
+      if (!isCompleted) {
+        return r;
+      }
+    }
+    return 1;
+  }, [matches, totalRounds]);
+
+  const [selectedRound, setSelectedRound] = useState<number>(() => earliestIncompleteRound);
+
+  // Default to 'scheduled' for incomplete matchdays, and 'all' for completed matchdays
+  const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'scheduled'>(() => {
+    const initialRoundMatches = matches.filter((m) => m.round === earliestIncompleteRound);
+    const isCompleted =
+      initialRoundMatches.length > 0 &&
+      initialRoundMatches.every((m) => m.status === 'completed');
+    return isCompleted ? 'all' : 'scheduled';
+  });
+
   const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
   const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   const teamMap = new Map<string, Team>();
   teams.forEach((t) => teamMap.set(t.id, t));
 
-  // Total rounds (42 for 21 teams in Home & Away double round-robin)
-  const totalRounds = config.totalRounds || 42;
-  const roundsArray = Array.from({ length: totalRounds }, (_, i) => i + 1);
+  // Handler for selecting a matchday round
+  const handleSelectRound = (roundNum: number) => {
+    setSelectedRound(roundNum);
+    setSelectedTeamId('all');
+    const roundMatchList = matches.filter((m) => m.round === roundNum);
+    const isCompleted =
+      roundMatchList.length > 0 &&
+      roundMatchList.every((m) => m.status === 'completed');
+    setStatusFilter(isCompleted ? 'all' : 'scheduled');
+  };
 
   // Auto-scroll active MD tab into center of view
   useEffect(() => {
@@ -70,20 +104,30 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
     }
   };
 
-  // Filter matches for the selected round or by team
-  const roundMatches = matches.filter((m) => {
-    if (selectedTeamId !== 'all') {
-      const matchInvolvesTeam =
-        m.homeTeamId === selectedTeamId || m.awayTeamId === selectedTeamId;
-      if (!matchInvolvesTeam) return false;
-    } else {
-      if (m.round !== selectedRound) return false;
-    }
+  // Matches within the current scope (by round or team)
+  const scopedMatches = useMemo(() => {
+    return matches.filter((m) => {
+      if (selectedTeamId !== 'all') {
+        return m.homeTeamId === selectedTeamId || m.awayTeamId === selectedTeamId;
+      }
+      return m.round === selectedRound;
+    });
+  }, [matches, selectedRound, selectedTeamId]);
 
-    if (statusFilter === 'completed') return m.status === 'completed';
-    if (statusFilter === 'scheduled') return m.status !== 'completed';
-    return true;
-  });
+  const totalCount = scopedMatches.length;
+  const completedCount = scopedMatches.filter((m) => m.status === 'completed').length;
+  const scheduledCount = scopedMatches.filter((m) => m.status !== 'completed').length;
+
+  // Filtered matches based on status filter
+  const roundMatches = useMemo(() => {
+    if (statusFilter === 'completed') {
+      return scopedMatches.filter((m) => m.status === 'completed');
+    }
+    if (statusFilter === 'scheduled') {
+      return scopedMatches.filter((m) => m.status !== 'completed');
+    }
+    return scopedMatches;
+  }, [scopedMatches, statusFilter]);
 
   const byeTeamId = byesPerRound[selectedRound];
   const byeTeam = byeTeamId ? teamMap.get(byeTeamId) : null;
@@ -100,9 +144,21 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
             </span>
           </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {selectedRound !== earliestIncompleteRound && (
+              <button
+                id="btn-jump-current-round"
+                onClick={() => handleSelectRound(earliestIncompleteRound)}
+                className="px-2 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1"
+                title={`Jump to earliest incomplete matchday (MD${earliestIncompleteRound})`}
+              >
+                <span>Current: MD{earliestIncompleteRound}</span>
+              </button>
+            )}
+
             <button
-              onClick={() => setSelectedRound((r) => Math.max(1, r - 1))}
+              id="btn-prev-round"
+              onClick={() => handleSelectRound(Math.max(1, selectedRound - 1))}
               disabled={selectedRound <= 1}
               className="p-1 rounded bg-[#0a0c10] hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
             >
@@ -112,7 +168,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               Matchday {selectedRound} of {totalRounds}
             </span>
             <button
-              onClick={() => setSelectedRound((r) => Math.min(totalRounds, r + 1))}
+              id="btn-next-round"
+              onClick={() => handleSelectRound(Math.min(totalRounds, selectedRound + 1))}
               disabled={selectedRound >= totalRounds}
               className="p-1 rounded bg-[#0a0c10] hover:bg-slate-800 border border-slate-800 text-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer"
             >
@@ -148,11 +205,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               return (
                 <button
                   key={roundNum}
+                  id={`tab-round-${roundNum}`}
                   data-active={isActive ? 'true' : undefined}
-                  onClick={() => {
-                    setSelectedRound(roundNum);
-                    setSelectedTeamId('all');
-                  }}
+                  onClick={() => handleSelectRound(roundNum)}
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                     isActive
                       ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 scale-[1.03]'
@@ -191,34 +246,64 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
         <div className="flex items-center gap-2 flex-wrap flex-1">
           <div className="flex items-center bg-[#0a0c10] border border-slate-800 rounded-lg p-0.5">
             <button
+              id="filter-all"
               onClick={() => setStatusFilter('all')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
                 statusFilter === 'all'
-                  ? 'bg-slate-800 text-white'
+                  ? 'bg-slate-800 text-white shadow-sm'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              All ({roundMatches.length})
+              <span>All</span>
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold transition ${
+                  statusFilter === 'all'
+                    ? 'bg-slate-700 text-slate-100'
+                    : 'bg-slate-900 text-slate-400 border border-slate-800'
+                }`}
+              >
+                {totalCount}
+              </span>
             </button>
             <button
+              id="filter-finished"
               onClick={() => setStatusFilter('completed')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
                 statusFilter === 'completed'
-                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/50'
+                  ? 'bg-emerald-950 text-emerald-300 border border-emerald-800/60 shadow-sm'
                   : 'text-slate-400 hover:text-emerald-400'
               }`}
             >
-              Finished
+              <span>Finished</span>
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold transition ${
+                  statusFilter === 'completed'
+                    ? 'bg-emerald-900/90 text-emerald-200 border border-emerald-700/50'
+                    : 'bg-slate-900 text-slate-400 border border-slate-800'
+                }`}
+              >
+                {completedCount}
+              </span>
             </button>
             <button
+              id="filter-scheduled"
               onClick={() => setStatusFilter('scheduled')}
-              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md transition cursor-pointer ${
                 statusFilter === 'scheduled'
-                  ? 'bg-slate-800 text-slate-200 border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-amber-950/80 text-amber-300 border border-amber-800/60 shadow-sm'
+                  : 'text-slate-400 hover:text-amber-400'
               }`}
             >
-              Scheduled
+              <span>Scheduled</span>
+              <span
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded font-bold transition ${
+                  statusFilter === 'scheduled'
+                    ? 'bg-amber-900/90 text-amber-200 border border-amber-700/50'
+                    : 'bg-slate-900 text-slate-400 border border-slate-800'
+                }`}
+              >
+                {scheduledCount}
+              </span>
             </button>
           </div>
 
