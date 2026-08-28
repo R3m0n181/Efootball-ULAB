@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   X,
   Calendar,
   Edit3,
   Camera,
   Eye,
+  Coffee,
 } from 'lucide-react';
 import { Team, Match, StandingsRow } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -16,6 +17,8 @@ interface TeamDetailModalProps {
   standingsRow: StandingsRow | null;
   matches: Match[];
   teams: Team[];
+  byesPerRound?: Record<number, string>;
+  totalRounds?: number;
   isAdmin?: boolean;
   onEditMatch: (match: Match) => void;
   onViewMatchDetail?: (match: Match) => void;
@@ -28,6 +31,8 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   standingsRow,
   matches,
   teams,
+  byesPerRound,
+  totalRounds = 42,
   isAdmin = false,
   onEditMatch,
   onViewMatchDetail,
@@ -38,9 +43,52 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   teams.forEach((t) => teamMap.set(t.id, t));
 
   // Matches for this team
-  const teamMatches = matches
-    .filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id)
-    .sort((a, b) => a.round - b.round);
+  const teamMatches = useMemo(() => {
+    return matches
+      .filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id)
+      .sort((a, b) => a.round - b.round);
+  }, [matches, team.id]);
+
+  // Unified 42-round schedule with matches & bye/rest matchdays in chronological order
+  const effectiveTotalRounds = totalRounds || 42;
+
+  const scheduleItems = useMemo(() => {
+    const items: Array<
+      | { type: 'match'; round: number; match: Match }
+      | { type: 'bye'; round: number; isFirstLeg: boolean; isRoundFinished: boolean }
+    > = [];
+
+    for (let r = 1; r <= effectiveTotalRounds; r++) {
+      const match = matches.find(
+        (m) => m.round === r && (m.homeTeamId === team.id || m.awayTeamId === team.id)
+      );
+
+      if (match) {
+        items.push({ type: 'match', round: r, match });
+      } else {
+        // Bye / Rest matchday for this team
+        const roundMatches = matches.filter((m) => m.round === r);
+        const isRoundFinished =
+          roundMatches.length > 0 &&
+          roundMatches.every((m) => m.status === 'completed');
+
+        items.push({
+          type: 'bye',
+          round: r,
+          isFirstLeg: r <= Math.floor(effectiveTotalRounds / 2),
+          isRoundFinished,
+        });
+      }
+    }
+
+    return items;
+  }, [matches, team.id, effectiveTotalRounds]);
+
+  const byeRounds = useMemo(() => {
+    return scheduleItems
+      .filter((item): item is { type: 'bye'; round: number; isFirstLeg: boolean; isRoundFinished: boolean } => item.type === 'bye')
+      .map((item) => item.round);
+  }, [scheduleItems]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
@@ -143,19 +191,85 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
         {/* Modal Scrollable Body */}
         <div className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
           {/* Full Match Fixture Schedule */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
+          <div className="space-y-2.5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Home & Away Fixture Schedule ({teamMatches.length} Matches)</span>
+                <span>
+                  Home &amp; Away Fixture Schedule ({teamMatches.length} Matches{byeRounds.length > 0 ? ` • ${byeRounds.length} Rest MDs` : ''})
+                </span>
               </h4>
-              <span className="text-[10px] text-slate-500 font-mono">
-                {teamMatches.filter((m) => m.status === 'completed').length} completed
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-mono">
+                  {teamMatches.filter((m) => m.status === 'completed').length} / {teamMatches.length} completed
+                </span>
+              </div>
             </div>
 
+            {/* Rest / Bye Matchdays Notice Banner */}
+            {byeRounds.length > 0 && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/25 rounded-lg text-xs text-amber-200">
+                <Coffee className="w-4 h-4 text-amber-400 shrink-0" />
+                <div className="text-[11px] leading-tight">
+                  <span className="text-amber-300 font-bold uppercase tracking-wide">Rest / Bye Matchdays:</span>{' '}
+                  {byeRounds.map((roundNum, idx) => {
+                    const isFirst = roundNum <= Math.floor(effectiveTotalRounds / 2);
+                    return (
+                      <span key={roundNum} className="inline-flex items-center gap-1">
+                        <strong className="text-white font-mono bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.2 rounded">
+                          MD {roundNum}
+                        </strong>
+                        <span className="text-amber-300/80">({isFirst ? 'First Leg' : 'Return Leg'})</span>
+                        {idx < byeRounds.length - 1 ? <span className="text-amber-500/60 mr-1">•</span> : ''}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5 max-h-96 overflow-y-auto pr-1">
-              {teamMatches.map((match) => {
+              {scheduleItems.map((item) => {
+                if (item.type === 'bye') {
+                  return (
+                    <div
+                      key={`bye-${item.round}`}
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-2.5 rounded-lg bg-[#0a0c10]/70 border border-dashed border-amber-500/30 text-xs transition gap-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[10px] text-amber-400 font-bold shrink-0">
+                          MD {item.round}
+                        </span>
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded font-mono shrink-0 bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                          <Coffee className="w-2.5 h-2.5 text-amber-400" />
+                          <span>REST / BYE</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <strong className="text-amber-200/90 text-xs truncate">
+                            Rest Matchday
+                          </strong>
+                          <span className="text-slate-400 text-[10px] truncate hidden xs:inline">
+                            • No fixture for {team.clubName} ({item.isFirstLeg ? '1st Leg' : '2nd Leg'})
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="shrink-0 flex items-center justify-end">
+                        {item.isRoundFinished ? (
+                          <span className="text-[10px] font-mono text-slate-400 bg-slate-900 border border-slate-800 px-2 py-0.5 rounded">
+                            MD Completed
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-mono font-medium text-amber-300/90 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded">
+                            Scheduled Rest
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
+                const match = item.match;
                 const isHome = match.homeTeamId === team.id;
                 const opponentId = isHome ? match.awayTeamId : match.homeTeamId;
                 const opponent = teamMap.get(opponentId);

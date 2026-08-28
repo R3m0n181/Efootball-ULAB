@@ -492,6 +492,8 @@ export default function App() {
         standingsRow={selectedTeamStandingsRow}
         matches={matches}
         teams={teams}
+        byesPerRound={byesPerRound}
+        totalRounds={config.totalRounds || 42}
         isAdmin={!!adminUser}
         onEditMatch={handleOpenSubmitForMatch}
         onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
