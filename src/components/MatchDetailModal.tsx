@@ -135,50 +135,52 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   return (
     <>
       <div
-        className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
+        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
         onClick={onClose}
       >
         <div
-          className="bg-[#0f1219] border border-slate-700/80 rounded-2xl w-full max-w-xl shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col"
+          className="bg-[#0f1219] border-t sm:border border-slate-700/80 rounded-t-2xl sm:rounded-2xl w-full max-w-xl shadow-2xl shadow-black/80 overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header Bar */}
           <div className="p-3.5 sm:p-4 border-b border-slate-800/90 bg-[#141824]/80 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
                 <Trophy className="w-4 h-4" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold text-white">Match Overview & Result</h3>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-800 border border-slate-700 text-slate-300">
-                    MD {match.round} • Match #{match.matchNumber}
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-sm font-bold text-white truncate">Match Result</h3>
+                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 border border-slate-700 text-slate-300">
+                    MD {match.round} • #{match.matchNumber}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">Official eFootball League Match Record</p>
+                <p className="text-[11px] text-slate-400 truncate">Official eFootball Match Record</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               {parentTeamContext && (
                 <button
                   onClick={onClose}
                   className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950/60 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-900/60 text-[10px] font-semibold transition cursor-pointer"
                   title={`Back to ${parentTeamContext.clubName}`}
                 >
-                  <span>← Back to {parentTeamContext.clubName}</span>
+                  <span>← Back</span>
                 </button>
               )}
               <button
                 onClick={() => onShareMatch(match)}
                 title="Share Result Card"
-                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                aria-label="Share Result Card"
+                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
               >
                 <Share2 className="w-4 h-4" />
               </button>
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+                aria-label="Close match details"
+                className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>

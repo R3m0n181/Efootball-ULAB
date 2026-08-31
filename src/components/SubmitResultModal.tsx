@@ -123,26 +123,27 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border border-slate-700/80 rounded-xl w-full max-w-lg shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-[#0f1219] border-t sm:border border-slate-700/80 rounded-t-2xl sm:rounded-xl w-full max-w-lg shadow-2xl shadow-black/80 overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         {/* Modal Header */}
-        <div className="p-3 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-              <Trophy className="w-3.5 h-3.5" />
+        <div className="p-3.5 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+              <Trophy className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-xs sm:text-sm font-bold text-white">Submit Match Result</h3>
-              <p className="text-[10px] text-slate-400">
-                Log final team scoreline to update Premier League standings
+              <h3 className="text-sm font-bold text-white">Submit Match Result</h3>
+              <p className="text-[11px] text-slate-400">
+                Log final scoreline to update Premier League standings
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            aria-label="Close submit modal"
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
@@ -150,13 +151,13 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
         <div className="p-3.5 sm:p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
           {/* Match Selector */}
           <div>
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
               Select Match Fixture
             </label>
             <select
               value={selectedMatchId}
               onChange={(e) => handleMatchSelect(e.target.value)}
-              className="w-full bg-[#0a0c10] border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
+              className="w-full bg-[#0a0c10] border border-slate-800 rounded-lg px-3 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-emerald-500 cursor-pointer"
             >
               {matches.map((m) => {
                 const h = teamMap.get(m.homeTeamId);
@@ -173,10 +174,10 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
             </select>
           </div>
 
-          {/* Teams Scoreboard Controller - Team Name Top, Player Below */}
+          {/* Teams Scoreboard Controller - Mobile Touch-Optimized Steppers */}
           {homeTeam && awayTeam && (
-            <div className="bg-[#0a0c10] p-4 rounded-xl border border-slate-800 shadow-inner">
-              <div className="grid grid-cols-5 items-center gap-2">
+            <div className="bg-[#0a0c10] p-3.5 sm:p-4 rounded-xl border border-slate-800 shadow-inner">
+              <div className="grid grid-cols-5 items-center gap-1.5 sm:gap-2">
                 {/* Home team */}
                 <div className="col-span-2 flex flex-col items-center text-center">
                   <TeamLogo team={homeTeam} size="lg" className="mb-1.5" />
@@ -189,12 +190,13 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                     {homeTeam.managerName}
                   </div>
 
-                  {/* Score stepper */}
-                  <div className="flex items-center gap-1.5 mt-3">
+                  {/* Touch-Friendly Score Stepper */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 mt-3">
                     <button
                       type="button"
                       onClick={() => setHomeScore((s) => Math.max(0, s - 1))}
-                      className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center text-sm cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold transition flex items-center justify-center text-base cursor-pointer select-none"
+                      aria-label="Decrease home score"
                     >
                       -
                     </button>
@@ -203,12 +205,13 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                       min={0}
                       value={homeScore}
                       onChange={(e) => setHomeScore(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-12 text-center text-xl font-black font-mono text-emerald-400 bg-slate-900 border border-slate-700 rounded py-0.5 focus:outline-none"
+                      className="w-12 sm:w-14 text-center text-2xl sm:text-xl font-black font-mono text-emerald-400 bg-slate-900 border border-slate-700 rounded-lg py-1 focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setHomeScore((s) => s + 1)}
-                      className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center text-sm cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold transition flex items-center justify-center text-base cursor-pointer select-none"
+                      aria-label="Increase home score"
                     >
                       +
                     </button>
@@ -217,7 +220,7 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
 
                 {/* Center VS */}
                 <div className="col-span-1 flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">Matchday {currentMatch?.round}</span>
+                  <span className="text-[10px] font-mono font-bold text-slate-500 uppercase">MD {currentMatch?.round}</span>
                   <div className="text-xl font-mono font-black text-slate-400 my-1">:</div>
                   <span className="text-[9px] text-slate-500">Home vs Away</span>
                 </div>
@@ -234,12 +237,13 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                     {awayTeam.managerName}
                   </div>
 
-                  {/* Score stepper */}
-                  <div className="flex items-center gap-1.5 mt-3">
+                  {/* Touch-Friendly Score Stepper */}
+                  <div className="flex items-center gap-1 sm:gap-1.5 mt-3">
                     <button
                       type="button"
                       onClick={() => setAwayScore((s) => Math.max(0, s - 1))}
-                      className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center text-sm cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold transition flex items-center justify-center text-base cursor-pointer select-none"
+                      aria-label="Decrease away score"
                     >
                       -
                     </button>
@@ -248,12 +252,13 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                       min={0}
                       value={awayScore}
                       onChange={(e) => setAwayScore(Math.max(0, parseInt(e.target.value) || 0))}
-                      className="w-12 text-center text-xl font-black font-mono text-emerald-400 bg-slate-900 border border-slate-700 rounded py-0.5 focus:outline-none"
+                      className="w-12 sm:w-14 text-center text-2xl sm:text-xl font-black font-mono text-emerald-400 bg-slate-900 border border-slate-700 rounded-lg py-1 focus:outline-none"
                     />
                     <button
                       type="button"
                       onClick={() => setAwayScore((s) => s + 1)}
-                      className="w-7 h-7 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition flex items-center justify-center text-sm cursor-pointer"
+                      className="w-9 h-9 sm:w-8 sm:h-8 rounded-lg bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-bold transition flex items-center justify-center text-base cursor-pointer select-none"
+                      aria-label="Increase away score"
                     >
                       +
                     </button>

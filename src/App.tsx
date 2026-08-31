@@ -28,8 +28,7 @@ import { Header } from './components/Header';
 import { StandingsTable } from './components/StandingsTable';
 import { FixturesView } from './components/FixturesView';
 import { TeamsListView } from './components/TeamsListView';
-import { AttackRankingView } from './components/AttackRankingView';
-import { DefenseRankingView } from './components/DefenseRankingView';
+import { TournamentRecordsView } from './components/TournamentRecordsView';
 import { SubmitResultModal } from './components/SubmitResultModal';
 import { TeamDetailModal } from './components/TeamDetailModal';
 import { MatchDetailModal } from './components/MatchDetailModal';
@@ -52,7 +51,7 @@ export default function App() {
   );
 
   const [activeTab, setActiveTab] = useState<
-    'standings' | 'fixtures' | 'teams' | 'attack' | 'defense'
+    'standings' | 'fixtures' | 'teams' | 'records'
   >('standings');
 
   // Modal States
@@ -340,6 +339,7 @@ export default function App() {
         topScoringTeam={summary.topScoringTeam}
         topDefendingTeam={summary.topDefendingTeam}
         mostCleanSheetsTeam={summary.mostCleanSheetsTeam}
+        hottestStreakTeam={summary.hottestStreakTeam}
         adminUser={adminUser}
         isCloudSynced={isCloudSynced}
         onOpenLoginModal={() =>
@@ -387,19 +387,17 @@ export default function App() {
           />
         )}
 
-        {/* ATTACK RANKING TAB */}
-        {activeTab === 'attack' && (
-          <AttackRankingView
+        {/* TOURNAMENT RECORDS & STATS TAB (ANALYTICS HUB) */}
+        {activeTab === 'records' && (
+          <TournamentRecordsView
+            teams={teams}
+            matches={matches}
+            standings={standings}
+            config={config}
             attackStats={attackStats}
-            onSelectTeam={(team) => handleOpenTeamDetail(team)}
-          />
-        )}
-
-        {/* DEFENCE RANKING TAB */}
-        {activeTab === 'defense' && (
-          <DefenseRankingView
             defenseStats={defenseStats}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
+            onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
           />
         )}
       </main>

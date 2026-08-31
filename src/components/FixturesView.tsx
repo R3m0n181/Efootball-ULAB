@@ -178,8 +178,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
           </div>
         </div>
 
-        {/* Horizontal Round Pills Scroll */}
+        {/* Horizontal Round Pills Scroll with Mobile Visual Fade Cues */}
         <div className="relative flex items-center gap-1.5 pt-1">
+          {/* Left Fade gradient indicator on mobile */}
+          <div className="pointer-events-none absolute left-0 top-1 bottom-1 w-5 bg-gradient-to-r from-[#0f1219] to-transparent z-10 sm:hidden" />
+          
           <button
             type="button"
             onClick={() => scrollTabs(-240)}
@@ -191,7 +194,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
           <div
             ref={tabsContainerRef}
-            className="flex-1 flex items-center gap-1.5 overflow-x-auto scroll-smooth py-1 px-0.5 touch-pan-x select-none"
+            className="flex-1 flex items-center gap-1.5 overflow-x-auto scroll-smooth py-1 px-1 touch-pan-x select-none no-scrollbar"
             style={{ WebkitOverflowScrolling: 'touch' }}
           >
             {roundsArray.map((roundNum) => {
@@ -228,6 +231,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               );
             })}
           </div>
+
+          {/* Right Fade gradient indicator on mobile */}
+          <div className="pointer-events-none absolute right-0 top-1 bottom-1 w-5 bg-gradient-to-l from-[#0f1219] to-transparent z-10 sm:hidden" />
 
           <button
             type="button"
@@ -328,7 +334,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
         {selectedTeamId === 'all' && byeTeam && (
           <div className="flex items-center gap-2 bg-indigo-950/40 border border-indigo-800/40 px-3 py-1.5 rounded-lg text-xs">
             <Coffee className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <TeamLogo team={byeTeam} size="xs" />
+            <TeamLogo team={byeTeam} size="md" />
             <span className="text-slate-300">
               Bye / Rest this matchday:{' '}
               <strong className="text-white">

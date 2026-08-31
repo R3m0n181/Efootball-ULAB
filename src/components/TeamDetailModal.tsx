@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   X,
   Calendar,
@@ -6,6 +6,13 @@ import {
   Camera,
   Eye,
   Coffee,
+  Zap,
+  Flame,
+  Castle,
+  Target,
+  Trophy,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Team, Match, StandingsRow } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -90,32 +97,171 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
       .map((item) => item.round);
   }, [scheduleItems]);
 
+  const [showRecordsSection, setShowRecordsSection] = useState(false);
+
+  // Club-specific stats across all 5 categories
+  const clubStats = useMemo(() => {
+    const completed = teamMatches.filter(
+      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    );
+
+    let maxWinStreak = 0;
+    let currWinStreak = 0;
+    let maxUnbeaten = 0;
+    let currUnbeaten = 0;
+    let cleanSheets = 0;
+    let bttsCount = 0;
+    let failedToScore = 0;
+
+    let homePlayed = 0;
+    let homeWon = 0;
+    let homeDrawn = 0;
+    let homeLost = 0;
+    let homeGF = 0;
+    let homeGA = 0;
+    let homePts = 0;
+
+    let awayPlayed = 0;
+    let awayWon = 0;
+    let awayDrawn = 0;
+    let awayLost = 0;
+    let awayGF = 0;
+    let awayGA = 0;
+    let awayPts = 0;
+
+    let biggestWin: { match: Match; margin: number; opponent: Team; score: string } | null = null;
+    let highestScoring: { match: Match; totalGoals: number; opponent: Team; score: string } | null = null;
+
+    completed.forEach((m) => {
+      const isHome = m.homeTeamId === team.id;
+      const myScore = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0);
+      const oppScore = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0);
+      const opponentId = isHome ? m.awayTeamId : m.homeTeamId;
+      const oppTeam = teamMap.get(opponentId) || teams[0];
+      const margin = myScore - oppScore;
+      const totalGoals = myScore + oppScore;
+
+      // Streaks
+      if (myScore > oppScore) {
+        currWinStreak += 1;
+        if (currWinStreak > maxWinStreak) maxWinStreak = currWinStreak;
+      } else {
+        currWinStreak = 0;
+      }
+
+      if (myScore >= oppScore) {
+        currUnbeaten += 1;
+        if (currUnbeaten > maxUnbeaten) maxUnbeaten = currUnbeaten;
+      } else {
+        currUnbeaten = 0;
+      }
+
+      // Efficiency
+      if (oppScore === 0) cleanSheets += 1;
+      if (myScore > 0 && oppScore > 0) bttsCount += 1;
+      if (myScore === 0) failedToScore += 1;
+
+      // Home vs Away
+      if (isHome) {
+        homePlayed += 1;
+        homeGF += myScore;
+        homeGA += oppScore;
+        if (myScore > oppScore) { homeWon += 1; homePts += 3; }
+        else if (myScore === oppScore) { homeDrawn += 1; homePts += 1; }
+        else { homeLost += 1; }
+      } else {
+        awayPlayed += 1;
+        awayGF += myScore;
+        awayGA += oppScore;
+        if (myScore > oppScore) { awayWon += 1; awayPts += 3; }
+        else if (myScore === oppScore) { awayDrawn += 1; awayPts += 1; }
+        else { awayLost += 1; }
+      }
+
+      // Biggest Win
+      if (margin > 0 && (!biggestWin || margin > biggestWin.margin)) {
+        biggestWin = {
+          match: m,
+          margin,
+          opponent: oppTeam,
+          score: `${myScore} - ${oppScore}`,
+        };
+      }
+
+      // Highest scoring match
+      if (!highestScoring || totalGoals > highestScoring.totalGoals) {
+        highestScoring = {
+          match: m,
+          totalGoals,
+          opponent: oppTeam,
+          score: `${m.homeScore} - ${m.awayScore}`,
+        };
+      }
+    });
+
+    const totalScheduled = 40;
+    const played = completed.length;
+    const points = homePts + awayPts;
+    const remaining = Math.max(0, totalScheduled - played);
+    const maxPointsCeiling = points + remaining * 3;
+
+    return {
+      completedCount: completed.length,
+      maxWinStreak,
+      currWinStreak,
+      maxUnbeaten,
+      currUnbeaten,
+      cleanSheets,
+      cleanSheetPct: played > 0 ? Math.round((cleanSheets / played) * 100) : 0,
+      bttsPct: played > 0 ? Math.round((bttsCount / played) * 100) : 0,
+      failedToScorePct: played > 0 ? Math.round((failedToScore / played) * 100) : 0,
+      home: {
+        played: homePlayed,
+        record: `${homeWon}W ${homeDrawn}D ${homeLost}L`,
+        points: homePts,
+        ppg: homePlayed > 0 ? (homePts / homePlayed).toFixed(2) : '0.00',
+        gfGa: `${homeGF}:${homeGA}`,
+      },
+      away: {
+        played: awayPlayed,
+        record: `${awayWon}W ${awayDrawn}D ${awayLost}L`,
+        points: awayPts,
+        ppg: awayPlayed > 0 ? (awayPts / awayPlayed).toFixed(2) : '0.00',
+        gfGa: `${awayGF}:${awayGA}`,
+      },
+      biggestWin,
+      highestScoring,
+      maxPointsCeiling,
+    };
+  }, [teamMatches, team.id, teamMap, teams]);
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border border-slate-800 rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-[#0f1219] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         {/* Header with Team Branding - Club Name First, Player Below */}
         <div
-          className="p-4 relative border-b border-slate-800 flex items-start justify-between text-white"
+          className="p-3.5 sm:p-4 relative border-b border-slate-800 flex items-start justify-between text-white"
           style={{
             background: `linear-gradient(135deg, ${team.color}35 0%, #0a0c10 100%)`,
           }}
         >
-          <div className="flex items-center gap-3">
-            <TeamLogo team={team} size="lg" className="border border-white/20 shadow-lg" />
-            <div>
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <TeamLogo team={team} size="lg" className="border border-white/20 shadow-lg shrink-0" />
+            <div className="min-w-0">
               {/* Club Name First */}
-              <h3 className="text-lg sm:text-xl font-black">{team.clubName}</h3>
+              <h3 className="text-base sm:text-xl font-black truncate">{team.clubName}</h3>
               {/* Player Name Below */}
-              <p className="text-xs text-slate-300 font-medium">
+              <p className="text-xs text-slate-300 font-medium truncate">
                 Player / Manager: <span className="text-white font-semibold">{team.managerName}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer"
+              aria-label="Close team details"
+              className="p-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>
@@ -190,7 +336,203 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
 
         {/* Modal Scrollable Body */}
         <div className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
-          {/* Full Match Fixture Schedule */}
+          {/* Club Records & Performance Metrics Card (5 Pillars) - Collapsible, Closed by default */}
+          <div className="bg-[#0a0c10] border border-slate-800/90 rounded-xl overflow-hidden shadow-md">
+            <div
+              id="team-toggle-records"
+              onClick={() => setShowRecordsSection(!showRecordsSection)}
+              className="px-3.5 py-2.5 bg-[#0f1219] hover:bg-[#141822] flex items-center justify-between cursor-pointer transition select-none"
+            >
+              <div className="flex items-center gap-2">
+                <Zap className="w-3.5 h-3.5 text-amber-400" />
+                <span className="font-bold text-slate-200 text-xs tracking-wide">
+                  Club Records &amp; Performance Highlights
+                </span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 font-mono font-bold">
+                  STATS
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <span className="text-[10px] hidden sm:inline">
+                  {showRecordsSection ? 'Hide' : 'Show'}
+                </span>
+                {showRecordsSection ? (
+                  <ChevronUp className="w-4 h-4 text-slate-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400" />
+                )}
+              </div>
+            </div>
+
+            {showRecordsSection && (
+              <div className="p-3 sm:p-3.5 space-y-2.5 sm:space-y-3 border-t border-slate-800/80">
+                {/* 4 Pillars Mini Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  {/* Biggest Win */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 flex flex-col justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                      <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span className="truncate">Biggest Win</span>
+                    </div>
+                    {clubStats.biggestWin ? (
+                      <div className="mt-1.5">
+                        <div className="text-xs sm:text-sm font-black text-white font-mono flex items-baseline gap-1.5">
+                          <span className="text-emerald-400">+{clubStats.biggestWin.margin}</span>
+                          <span className="text-slate-300 font-bold">({clubStats.biggestWin.score})</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                          vs <span className="text-slate-200 font-semibold">{clubStats.biggestWin.opponent.shortCode}</span> <span className="text-slate-500 font-mono">(MD {clubStats.biggestWin.match.round})</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 italic mt-2">None yet</div>
+                    )}
+                  </div>
+
+                  {/* Highest Scoring Match */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 flex flex-col justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                      <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">High Score Match</span>
+                    </div>
+                    {clubStats.highestScoring ? (
+                      <div className="mt-1.5">
+                        <div className="text-xs sm:text-sm font-black text-amber-300 font-mono flex items-baseline gap-1.5">
+                          <span>{clubStats.highestScoring.totalGoals} Goals</span>
+                          <span className="text-slate-400 font-normal text-[11px]">({clubStats.highestScoring.score})</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 truncate mt-0.5">
+                          vs <span className="text-slate-200 font-semibold">{clubStats.highestScoring.opponent.shortCode}</span> <span className="text-slate-500 font-mono">(MD {clubStats.highestScoring.match.round})</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[10px] text-slate-500 italic mt-2">None yet</div>
+                    )}
+                  </div>
+
+                  {/* Best Streaks */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 flex flex-col justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                      <Target className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="truncate">Form Streaks</span>
+                    </div>
+                    <div className="mt-1.5">
+                      <div className="text-xs sm:text-sm font-black text-cyan-300 font-mono">
+                        {clubStats.maxWinStreak}W <span className="text-slate-500 font-normal text-[10px]">peak</span> • {clubStats.maxUnbeaten} <span className="text-slate-500 font-normal text-[10px]">unbeaten</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                        Active:{' '}
+                        <span className="font-semibold text-slate-200 font-mono">
+                          {clubStats.currWinStreak > 0
+                            ? `${clubStats.currWinStreak}W Win Streak`
+                            : clubStats.currUnbeaten > 0
+                            ? `${clubStats.currUnbeaten} Unbeaten`
+                            : 'None'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Max Points Ceiling */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 flex flex-col justify-between">
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                      <Trophy className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      <span className="truncate">Points Ceiling</span>
+                    </div>
+                    <div className="mt-1.5">
+                      <div className="text-xs sm:text-sm font-black text-indigo-300 font-mono">
+                        {clubStats.maxPointsCeiling} PTS <span className="text-slate-500 font-normal text-[10px]">Max</span>
+                      </div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+                        <span className="font-mono text-slate-300 font-semibold">{Math.max(0, 40 - clubStats.completedCount)}</span> matches remaining
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Home vs Away & Rates Stack */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                  {/* Home vs Away Fortress */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 space-y-2">
+                    <div className="flex items-center justify-between text-slate-400 font-medium">
+                      <span className="flex items-center gap-1.5 text-[10px] uppercase text-emerald-400 font-black tracking-wider">
+                        <Castle className="w-3.5 h-3.5" /> Home vs Away Splits
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 font-mono">
+                      {/* Home */}
+                      <div className="bg-[#0a0c10] p-2 rounded-lg border border-emerald-500/25 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wide">Home</span>
+                            <span className="text-[9px] text-slate-500">{clubStats.home.played}P</span>
+                          </div>
+                          <div className="font-black text-white text-xs sm:text-sm mt-0.5">{clubStats.home.record}</div>
+                        </div>
+                        <div className="mt-1.5 pt-1.5 border-t border-slate-800/80 text-[10px] text-slate-300 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Pts:</span>
+                            <span className="font-bold text-emerald-300">{clubStats.home.points} ({clubStats.home.ppg} PPG)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">GF:GA:</span>
+                            <span className="text-slate-300">{clubStats.home.gfGa}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Away */}
+                      <div className="bg-[#0a0c10] p-2 rounded-lg border border-cyan-500/25 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold text-cyan-400 uppercase tracking-wide">Away</span>
+                            <span className="text-[9px] text-slate-500">{clubStats.away.played}P</span>
+                          </div>
+                          <div className="font-black text-white text-xs sm:text-sm mt-0.5">{clubStats.away.record}</div>
+                        </div>
+                        <div className="mt-1.5 pt-1.5 border-t border-slate-800/80 text-[10px] text-slate-300 space-y-0.5">
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">Pts:</span>
+                            <span className="font-bold text-cyan-300">{clubStats.away.points} ({clubStats.away.ppg} PPG)</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-500">GF:GA:</span>
+                            <span className="text-slate-300">{clubStats.away.gfGa}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Efficiency Rates */}
+                  <div className="p-2.5 rounded-lg bg-[#0f1219] border border-slate-800/90 space-y-2">
+                    <span className="flex items-center gap-1.5 text-[10px] uppercase text-cyan-400 font-black tracking-wider">
+                      <Target className="w-3.5 h-3.5" /> Efficiency &amp; Rates
+                    </span>
+                    <div className="grid grid-cols-3 gap-1.5 font-mono text-center">
+                      <div className="bg-[#0a0c10] p-2 rounded-lg border border-slate-800 flex flex-col justify-between">
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight leading-tight">Clean Sheet</div>
+                        <div className="font-black text-cyan-300 text-xs sm:text-sm my-1">{clubStats.cleanSheetPct}%</div>
+                        <div className="text-[9px] text-slate-500">{clubStats.cleanSheets} CS</div>
+                      </div>
+                      <div className="bg-[#0a0c10] p-2 rounded-lg border border-slate-800 flex flex-col justify-between">
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight leading-tight">BTTS Rate</div>
+                        <div className="font-black text-amber-300 text-xs sm:text-sm my-1">{clubStats.bttsPct}%</div>
+                        <div className="text-[9px] text-slate-500">Both scored</div>
+                      </div>
+                      <div className="bg-[#0a0c10] p-2 rounded-lg border border-slate-800 flex flex-col justify-between">
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-tight leading-tight">Failed To Score</div>
+                        <div className="font-black text-rose-300 text-xs sm:text-sm my-1">{clubStats.failedToScorePct}%</div>
+                        <div className="text-[9px] text-slate-500">0 goals scored</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Full Match Fixture Schedule (Non-collapsible, as earlier) */}
           <div className="space-y-2.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
@@ -314,7 +656,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                           {isHome ? 'H' : 'A'}
                         </span>
                         <div className="flex items-center gap-1.5 min-w-0">
-                          {opponent && <TeamLogo team={opponent} size="xs" />}
+                          {opponent && <TeamLogo team={opponent} size="md" />}
                           <strong className={`text-white text-xs transition truncate ${
                             hasAction ? 'group-hover:text-emerald-400' : ''
                           }`}>

@@ -120,13 +120,13 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
   const renderSortIndicator = (field: SortField) => {
     if (sortField === field) {
       return sortDirection === 'asc' ? (
-        <ArrowUp className="w-3 h-3 text-amber-400 shrink-0 inline-block ml-0.5" />
+        <ArrowUp className="w-3 h-3 text-amber-400 shrink-0 inline-block ml-1" />
       ) : (
-        <ArrowDown className="w-3 h-3 text-amber-400 shrink-0 inline-block ml-0.5" />
+        <ArrowDown className="w-3 h-3 text-amber-400 shrink-0 inline-block ml-1" />
       );
     }
     return (
-      <ArrowUpDown className="w-2.5 h-2.5 text-slate-600 opacity-0 group-hover/th:opacity-100 transition shrink-0 inline-block ml-0.5" />
+      <ArrowUpDown className="w-2.5 h-2.5 text-slate-400 opacity-40 group-hover/th:opacity-100 group-hover/th:text-slate-200 transition shrink-0 inline-block ml-1" />
     );
   };
 
@@ -161,12 +161,12 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                     className="mt-1 cursor-pointer group"
                   >
                     <div className="flex items-center gap-2">
-                      <TeamLogo team={topAttackingTeam.team} size="sm" />
+                      <TeamLogo team={topAttackingTeam.team} size="md" />
                       <span className="text-sm sm:text-base font-bold text-white group-hover:text-amber-300 group-hover:underline transition">
                         {topAttackingTeam.team.clubName}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-400 font-medium pl-9 -mt-0.5">
+                    <div className="text-xs text-slate-400 font-medium pl-12 -mt-0.5">
                       {topAttackingTeam.team.managerName}
                     </div>
                   </div>
@@ -275,35 +275,30 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
       {/* Attack Ranking Table */}
       <div className="bg-[#0f1219] border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[420px] sm:min-w-full">
             <thead className="bg-[#0a0c10] border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 select-none">
-              <tr>
-                {/* Rank */}
-                <th
-                  onClick={() => handleSort('rank')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition w-14 text-center"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>Rank</span>
-                    {renderSortIndicator('rank')}
+              <tr className="border-b border-slate-800 bg-[#0a0c10]/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none backdrop-blur-xs">
+                {/* Rank # (Sticky Left) */}
+                <th className="py-2.5 px-1 sm:px-3 text-center w-6 sm:w-10 sticky left-0 z-20 bg-[#0a0c10]">
+                  <div className="flex items-center justify-center">
+                    <span>#</span>
                   </div>
                 </th>
 
-                {/* Club & Manager */}
-                <th
-                  onClick={() => handleSort('club')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition min-w-[180px] sm:min-w-[220px]"
-                >
-                  <div className="flex items-center gap-0.5">
-                    <span>Club &amp; Manager</span>
-                    {renderSortIndicator('club')}
+                {/* Club & Manager (Sticky Left next to Rank - Narrower on Mobile) */}
+                <th className="py-2.5 px-1.5 sm:px-3.5 min-w-[88px] max-w-[105px] sm:min-w-[200px] sm:max-w-none sticky left-6 sm:left-10 z-20 bg-[#0a0c10] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80">
+                  <div className="flex items-center gap-1">
+                    <span className="sm:hidden">Club</span>
+                    <span className="hidden sm:inline">Club / Team</span>
                   </div>
                 </th>
 
                 {/* Matches Played */}
                 <th
                   onClick={() => handleSort('played')}
-                  className="py-2.5 px-2.5 font-semibold cursor-pointer group/th hover:text-white transition text-center w-16"
+                  className={`py-2.5 px-1 sm:px-2.5 font-semibold cursor-pointer group/th hover:text-white transition text-center w-12 sm:w-16 ${
+                    sortField === 'played' ? 'text-amber-300' : ''
+                  }`}
                   title="Matches Played"
                 >
                   <div className="flex items-center justify-center gap-0.5">
@@ -315,11 +310,14 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                 {/* Goals Scored Per Match */}
                 <th
                   onClick={() => handleSort('goalsPerMatch')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center bg-amber-500/10 text-amber-300"
+                  className={`py-2.5 px-2 sm:px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center ${
+                    sortField === 'goalsPerMatch' ? 'bg-amber-500/10 text-amber-300' : ''
+                  }`}
                   title="Goals Scored Per Match (Primary Metric)"
                 >
                   <div className="flex items-center justify-center gap-0.5">
-                    <span>Goals / Match</span>
+                    <span className="sm:hidden">GF/M</span>
+                    <span className="hidden sm:inline">Goals / Match</span>
                     {renderSortIndicator('goalsPerMatch')}
                   </div>
                 </th>
@@ -327,11 +325,14 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                 {/* Total Goals Scored */}
                 <th
                   onClick={() => handleSort('goalsScored')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center"
+                  className={`py-2.5 px-1.5 sm:px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center ${
+                    sortField === 'goalsScored' ? 'text-amber-300' : ''
+                  }`}
                   title="Total Goals Scored (GF)"
                 >
                   <div className="flex items-center justify-center gap-0.5">
-                    <span>Total GF</span>
+                    <span className="sm:hidden">GF</span>
+                    <span className="hidden sm:inline">Total GF</span>
                     {renderSortIndicator('goalsScored')}
                   </div>
                 </th>
@@ -339,7 +340,9 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                 {/* Highest Single Match Score */}
                 <th
                   onClick={() => handleSort('highestMatchScore')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden md:table-cell"
+                  className={`py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden md:table-cell ${
+                    sortField === 'highestMatchScore' ? 'text-amber-300' : ''
+                  }`}
                   title="Highest Goals Scored in a Single Match"
                 >
                   <div className="flex items-center justify-center gap-0.5">
@@ -351,7 +354,9 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                 {/* Goal Difference */}
                 <th
                   onClick={() => handleSort('goalDifference')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden sm:table-cell"
+                  className={`py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden sm:table-cell ${
+                    sortField === 'goalDifference' ? 'text-amber-300' : ''
+                  }`}
                   title="Goal Difference (GF - GA)"
                 >
                   <div className="flex items-center justify-center gap-0.5">
@@ -371,7 +376,7 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                   <tr
                     key={item.team.id}
                     onClick={() => onSelectTeam(item.team)}
-                    className={`hover:bg-slate-800/50 cursor-pointer transition ${
+                    className={`group hover:bg-slate-800/50 cursor-pointer transition ${
                       isLeader
                         ? 'bg-amber-950/20'
                         : isTop3
@@ -379,38 +384,40 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                         : ''
                     }`}
                   >
-                    {/* Rank */}
-                    <td className="py-2.5 px-3 text-center font-mono">
-                      {item.rank === 1 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-500/20 border border-amber-500/40 text-amber-300 font-bold text-xs shadow-sm">
-                          1
-                        </span>
-                      ) : item.rank === 2 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-200 font-bold text-xs">
-                          2
-                        </span>
-                      ) : item.rank === 3 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-700/20 border border-amber-700/40 text-amber-500 font-bold text-xs">
-                          3
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-semibold">{item.rank}</span>
-                      )}
+                    {/* Rank (Sticky Left) */}
+                    <td className="py-2 px-1 sm:px-3 text-center font-mono font-bold sticky left-0 z-10 bg-[#0f1219] group-hover:bg-[#151a24] transition w-6 sm:w-10">
+                      <div className="flex items-center justify-center">
+                        {item.rank === 1 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-500 text-slate-950 font-black text-[10px] sm:text-xs shadow-sm shadow-amber-500/20">
+                            1
+                          </span>
+                        ) : item.rank === 2 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-300 text-slate-950 font-bold text-[10px] sm:text-xs">
+                            2
+                          </span>
+                        ) : item.rank === 3 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-700 text-white font-bold text-[10px] sm:text-xs">
+                            3
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-semibold text-[10px] sm:text-xs">{item.rank}</span>
+                        )}
+                      </div>
                     </td>
 
-                    {/* Club & Manager Stacked */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <TeamLogo team={item.team} size="sm" />
-                        <div className="min-w-0">
-                          <div className="font-bold text-white hover:text-amber-400 transition truncate flex items-center gap-1.5">
-                            <span>{item.team.clubName}</span>
-                            <span className="text-[10px] text-slate-400 font-mono font-normal">
+                    {/* Club & Manager Stacked (Sticky Left next to Rank - Compact on Mobile) */}
+                    <td className="py-2 px-1.5 sm:px-3.5 sticky left-6 sm:left-10 z-10 bg-[#0f1219] group-hover:bg-[#151a24] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80 transition min-w-[88px] max-w-[105px] sm:min-w-[200px] sm:max-w-none">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5">
+                        <TeamLogo team={item.team} size="table" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-white group-hover:text-amber-400 transition truncate text-[11px] sm:text-sm leading-tight flex items-center gap-1">
+                            <span className="truncate">{item.team.clubName}</span>
+                            <span className="text-[9px] text-slate-400 font-mono font-normal hidden sm:inline">
                               ({item.team.shortCode})
                             </span>
                           </div>
                           {/* Player name displayed cleanly below team name */}
-                          <div className="text-[11px] text-slate-400 truncate">
+                          <div className="text-[9px] sm:text-[11px] text-slate-400 truncate leading-tight">
                             {item.team.managerName}
                           </div>
                         </div>
@@ -418,17 +425,17 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                     </td>
 
                     {/* Matches Played */}
-                    <td className="py-2.5 px-2.5 text-center font-mono text-slate-300">
+                    <td className="py-2 sm:py-2.5 px-1 sm:px-2.5 text-center font-mono text-slate-300 text-xs">
                       {item.matchesPlayed}
                     </td>
 
                     {/* Goals Per Match (Highlighted) */}
-                    <td className="py-2.5 px-3 text-center font-mono font-bold text-sm bg-amber-500/5 text-amber-400">
+                    <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-center font-mono font-bold text-xs sm:text-sm bg-amber-500/5 text-amber-400">
                       {item.matchesPlayed > 0 ? item.goalsPerMatch.toFixed(2) : '-'}
                     </td>
 
                     {/* Total Goals Scored */}
-                    <td className="py-2.5 px-3 text-center font-mono font-bold text-white">
+                    <td className="py-2 sm:py-2.5 px-1.5 sm:px-3 text-center font-mono font-bold text-white text-xs sm:text-sm">
                       {item.goalsScored}
                     </td>
 

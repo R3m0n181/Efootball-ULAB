@@ -70,20 +70,20 @@ export const TeamsListView: React.FC<TeamsListViewProps> = ({
             <input
               id="teams-search-input"
               type="text"
-              placeholder="Search club (e.g. Bayern Munich, Leverkusen) or player..."
+              placeholder="Search club (e.g. Bayern, Leverkusen) or player..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+              className="w-full pl-8 pr-3 py-2 sm:py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
             />
           </div>
 
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] text-slate-400 shrink-0 font-medium">Sort:</span>
+            <span className="text-[11px] text-slate-400 shrink-0 font-medium sm:inline hidden">Sort:</span>
             <select
               id="teams-sort-select"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="px-2.5 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 transition cursor-pointer"
+              className="w-full sm:w-auto px-3 py-2 sm:py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-emerald-500 transition cursor-pointer"
             >
               <option value="name-asc">Team Name (A → Z)</option>
               <option value="name-desc">Team Name (Z → A)</option>
@@ -93,7 +93,7 @@ export const TeamsListView: React.FC<TeamsListViewProps> = ({
           </div>
         </div>
 
-        <div className="text-xs text-slate-400 font-medium">
+        <div className="text-xs text-slate-400 font-medium sm:text-right text-center">
           Showing <span className="text-white font-bold">{sortedAndFilteredTeams.length}</span> of {teams.length} Participating Teams
         </div>
       </div>

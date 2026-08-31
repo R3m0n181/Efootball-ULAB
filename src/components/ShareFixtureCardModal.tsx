@@ -52,19 +52,20 @@ export const ShareFixtureCardModal: React.FC<ShareFixtureCardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border border-slate-700/80 rounded-xl w-full max-w-md shadow-2xl shadow-black/80 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4 bg-black/85 backdrop-blur-xs overflow-y-auto">
+      <div className="bg-[#0f1219] border-t sm:border border-slate-700/80 rounded-t-2xl sm:rounded-xl w-full max-w-md shadow-2xl shadow-black/80 overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         {/* Header */}
-        <div className="p-3 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
+        <div className="p-3.5 border-b border-slate-800 bg-[#0a0c10] flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Share2 className="w-3.5 h-3.5 text-emerald-400" />
-            <h3 className="text-xs sm:text-sm font-bold text-white">Share Match Result Card</h3>
+            <Share2 className="w-4 h-4 text-emerald-400" />
+            <h3 className="text-sm font-bold text-white">Share Match Result Card</h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+            aria-label="Close share card"
+            className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer min-w-[36px] min-h-[36px] flex items-center justify-center"
           >
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 

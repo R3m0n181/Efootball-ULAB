@@ -157,13 +157,13 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
   const renderSortIndicator = (field: SortField) => {
     if (sortField === field) {
       return sortDirection === 'asc' ? (
-        <ArrowUp className="w-3 h-3 text-emerald-400 shrink-0 inline-block ml-0.5" />
+        <ArrowUp className="w-3 h-3 text-emerald-400 shrink-0 inline-block ml-1" />
       ) : (
-        <ArrowDown className="w-3 h-3 text-emerald-400 shrink-0 inline-block ml-0.5" />
+        <ArrowDown className="w-3 h-3 text-emerald-400 shrink-0 inline-block ml-1" />
       );
     }
     return (
-      <ArrowUpDown className="w-2.5 h-2.5 text-slate-600 opacity-0 group-hover/th:opacity-100 transition shrink-0 inline-block ml-0.5" />
+      <ArrowUpDown className="w-2.5 h-2.5 text-slate-400 opacity-40 group-hover/th:opacity-100 group-hover/th:text-slate-200 transition shrink-0 inline-block ml-1" />
     );
   };
 
@@ -242,28 +242,18 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-800 bg-[#0a0c10]/80 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
-                {/* Rank # */}
-                <th
-                  onClick={() => handleSort('rank')}
-                  className="py-2.5 px-2 sm:px-3 text-center w-8 sm:w-10 cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Rank (#)"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span className={sortField === 'rank' ? 'text-emerald-400 font-black' : ''}>#</span>
-                    {renderSortIndicator('rank')}
+              <tr className="border-b border-slate-800 bg-[#0a0c10]/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none backdrop-blur-xs">
+                {/* Rank # (Sticky Left) */}
+                <th className="py-2.5 px-2 sm:px-3 text-center w-8 sm:w-10 sticky left-0 z-20 bg-[#0a0c10]">
+                  <div className="flex items-center justify-center">
+                    <span>#</span>
                   </div>
                 </th>
 
-                {/* Club / Team */}
-                <th
-                  onClick={() => handleSort('club')}
-                  className="py-2.5 px-2 sm:px-3.5 min-w-[140px] sm:min-w-[200px] cursor-pointer group/th hover:bg-slate-800/60 transition"
-                  title="Sort by Club Name"
-                >
+                {/* Club / Team (Sticky Left next to Rank) */}
+                <th className="py-2.5 px-2.5 sm:px-3.5 min-w-[140px] sm:min-w-[200px] sticky left-8 sm:left-10 z-20 bg-[#0a0c10] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80">
                   <div className="flex items-center gap-1">
-                    <span className={sortField === 'club' ? 'text-emerald-400 font-black' : ''}>Club / Team</span>
-                    {renderSortIndicator('club')}
+                    <span>Club / Team</span>
                   </div>
                 </th>
 
@@ -403,8 +393,8 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       position === 1 ? 'bg-amber-500/5' : ''
                     }`}
                   >
-                    {/* Rank / Fixed Position */}
-                    <td className="py-2 px-2 text-center font-mono font-bold">
+                    {/* Rank / Fixed Position (Sticky on scroll) */}
+                    <td className="py-2 px-2 text-center font-mono font-bold sticky left-0 z-10 bg-[#0f1219] group-hover:bg-[#151a24] transition">
                       <div className="flex items-center justify-center">
                         <span
                           className={`w-5 h-5 rounded flex items-center justify-center text-xs ${
@@ -422,11 +412,11 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                       </div>
                     </td>
 
-                    {/* Club (Top) & Manager (Below) */}
-                    <td className="py-2 px-3.5">
-                      <div className="flex items-center gap-2.5">
+                    {/* Club (Top) & Manager (Below) - Sticky Left next to Rank */}
+                    <td className="py-2 px-2.5 sm:px-3.5 sticky left-8 sm:left-10 z-10 bg-[#0f1219] group-hover:bg-[#151a24] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80 transition">
+                      <div className="flex items-center gap-2 sm:gap-2.5">
                         {/* Official Club Crest */}
-                        <TeamLogo team={row.team} size="sm" />
+                        <TeamLogo team={row.team} size="table" />
 
                         <div className="min-w-0">
                           {/* Team name first (Prominent) */}
@@ -435,9 +425,9 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                           </div>
                           {/* Player name below */}
                           <div className="flex items-center gap-1 text-[11px] text-slate-400">
-                            <span className="font-medium text-slate-400">{row.team.managerName}</span>
-                            <span className="text-slate-600">•</span>
-                            <span className="font-mono text-[10px] text-slate-500 uppercase">
+                            <span className="font-medium text-slate-400 truncate">{row.team.managerName}</span>
+                            <span className="text-slate-600 shrink-0">•</span>
+                            <span className="font-mono text-[10px] text-slate-500 uppercase shrink-0">
                               {row.team.shortCode}
                             </span>
                           </div>

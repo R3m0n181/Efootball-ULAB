@@ -107,3 +107,87 @@ export interface TournamentConfig {
   europaSpots: number; // e.g. next 4 spots
 }
 
+export interface MatchHighStat {
+  rank: number;
+  match: Match;
+  homeTeam: Team;
+  awayTeam: Team;
+  round: number;
+  scoreString: string;
+  primaryValue: number;
+  metricLabel: string;
+  secondaryLabel?: string;
+}
+
+export interface TeamStreakStat {
+  team: Team;
+  longestWinStreak: number;
+  currentWinStreak: number;
+  longestUnbeatenStreak: number;
+  currentUnbeatenStreak: number;
+  longestCleanSheetStreak: number;
+  currentCleanSheetStreak: number;
+  longestScoringStreak: number;
+  currentScoringStreak: number;
+  last5Form: ('W' | 'D' | 'L')[];
+}
+
+export interface TeamHomeAwayStat {
+  team: Team;
+  home: {
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDifference: number;
+    points: number;
+    ppg: number;
+    winRate: number;
+  };
+  away: {
+    played: number;
+    won: number;
+    drawn: number;
+    lost: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    goalDifference: number;
+    points: number;
+    ppg: number;
+    winRate: number;
+  };
+}
+
+export interface TeamEfficiencyStat {
+  team: Team;
+  matchesPlayed: number;
+  cleanSheets: number;
+  cleanSheetPct: number;
+  bttsCount: number; // Both Teams To Score
+  bttsPct: number;
+  over25Count: number; // > 2.5 goals in match
+  over25Pct: number;
+  under25Count: number;
+  under25Pct: number;
+  failedToScoreCount: number; // FTS
+  failedToScorePct: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDominanceRatio: number; // GF / GA
+}
+
+export interface TeamMilestoneStat {
+  team: Team;
+  currentRank: number;
+  played: number;
+  remainingMatches: number;
+  points: number;
+  ppg: number;
+  maxPossiblePoints: number;
+  winRate: number;
+  goalsPerPoint: number;
+}
+
+

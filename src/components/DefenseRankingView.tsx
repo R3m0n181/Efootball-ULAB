@@ -129,13 +129,13 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
   const renderSortIndicator = (field: SortField) => {
     if (sortField === field) {
       return sortDirection === 'asc' ? (
-        <ArrowUp className="w-3 h-3 text-cyan-400 shrink-0 inline-block ml-0.5" />
+        <ArrowUp className="w-3 h-3 text-cyan-400 shrink-0 inline-block ml-1" />
       ) : (
-        <ArrowDown className="w-3 h-3 text-cyan-400 shrink-0 inline-block ml-0.5" />
+        <ArrowDown className="w-3 h-3 text-cyan-400 shrink-0 inline-block ml-1" />
       );
     }
     return (
-      <ArrowUpDown className="w-2.5 h-2.5 text-slate-600 opacity-0 group-hover/th:opacity-100 transition shrink-0 inline-block ml-0.5" />
+      <ArrowUpDown className="w-2.5 h-2.5 text-slate-400 opacity-40 group-hover/th:opacity-100 group-hover/th:text-slate-200 transition shrink-0 inline-block ml-1" />
     );
   };
 
@@ -170,12 +170,12 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                     className="mt-1 cursor-pointer group"
                   >
                     <div className="flex items-center gap-2">
-                      <TeamLogo team={topDefendingTeam.team} size="sm" />
+                      <TeamLogo team={topDefendingTeam.team} size="md" />
                       <span className="text-sm sm:text-base font-bold text-white group-hover:text-cyan-300 group-hover:underline transition">
                         {topDefendingTeam.team.clubName}
                       </span>
                     </div>
-                    <div className="text-xs text-slate-400 font-medium pl-9 -mt-0.5">
+                    <div className="text-xs text-slate-400 font-medium pl-12 -mt-0.5">
                       {topDefendingTeam.team.managerName}
                     </div>
                   </div>
@@ -284,35 +284,30 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
       {/* Defence Ranking Table */}
       <div className="bg-[#0f1219] border border-slate-800 rounded-xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[420px] sm:min-w-full">
             <thead className="bg-[#0a0c10] border-b border-slate-800 text-[11px] uppercase tracking-wider text-slate-400 select-none">
-              <tr>
-                {/* Rank */}
-                <th
-                  onClick={() => handleSort('rank')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition w-14 text-center"
-                >
-                  <div className="flex items-center justify-center gap-0.5">
-                    <span>Rank</span>
-                    {renderSortIndicator('rank')}
+              <tr className="border-b border-slate-800 bg-[#0a0c10]/95 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none backdrop-blur-xs">
+                {/* Rank # (Sticky Left) */}
+                <th className="py-2.5 px-1 sm:px-3 text-center w-6 sm:w-10 sticky left-0 z-20 bg-[#0a0c10]">
+                  <div className="flex items-center justify-center">
+                    <span>#</span>
                   </div>
                 </th>
 
-                {/* Club & Manager */}
-                <th
-                  onClick={() => handleSort('club')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition min-w-[180px] sm:min-w-[220px]"
-                >
-                  <div className="flex items-center gap-0.5">
-                    <span>Club &amp; Manager</span>
-                    {renderSortIndicator('club')}
+                {/* Club & Manager (Sticky Left next to Rank - Narrower on Mobile) */}
+                <th className="py-2.5 px-1.5 sm:px-3.5 min-w-[88px] max-w-[105px] sm:min-w-[200px] sm:max-w-none sticky left-6 sm:left-10 z-20 bg-[#0a0c10] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80">
+                  <div className="flex items-center gap-1">
+                    <span className="sm:hidden">Club</span>
+                    <span className="hidden sm:inline">Club / Team</span>
                   </div>
                 </th>
 
                 {/* Matches Played */}
                 <th
                   onClick={() => handleSort('played')}
-                  className="py-2.5 px-2.5 font-semibold cursor-pointer group/th hover:text-white transition text-center w-16"
+                  className={`py-2.5 px-1 sm:px-2.5 font-semibold cursor-pointer group/th hover:text-white transition text-center w-12 sm:w-16 ${
+                    sortField === 'played' ? 'text-cyan-300' : ''
+                  }`}
                   title="Matches Played"
                 >
                   <div className="flex items-center justify-center gap-0.5">
@@ -324,11 +319,14 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                 {/* Goals Conceded Per Match */}
                 <th
                   onClick={() => handleSort('goalsConcededPerMatch')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center bg-cyan-500/10 text-cyan-300"
+                  className={`py-2.5 px-2 sm:px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center ${
+                    sortField === 'goalsConcededPerMatch' ? 'bg-cyan-500/10 text-cyan-300' : ''
+                  }`}
                   title="Lowest Goals Conceded Per Match (Primary Metric - Lower is Better)"
                 >
                   <div className="flex items-center justify-center gap-0.5">
-                    <span>Conceded / Match</span>
+                    <span className="sm:hidden">GA/M</span>
+                    <span className="hidden sm:inline">Conceded / Match</span>
                     {renderSortIndicator('goalsConcededPerMatch')}
                   </div>
                 </th>
@@ -336,11 +334,14 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                 {/* Total Goals Conceded */}
                 <th
                   onClick={() => handleSort('goalsConceded')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center"
+                  className={`py-2.5 px-1.5 sm:px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center ${
+                    sortField === 'goalsConceded' ? 'text-cyan-300' : ''
+                  }`}
                   title="Total Goals Conceded (GA)"
                 >
                   <div className="flex items-center justify-center gap-0.5">
-                    <span>Total GA</span>
+                    <span className="sm:hidden">GA</span>
+                    <span className="hidden sm:inline">Total GA</span>
                     {renderSortIndicator('goalsConceded')}
                   </div>
                 </th>
@@ -348,11 +349,14 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                 {/* Clean Sheets */}
                 <th
                   onClick={() => handleSort('cleanSheets')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center"
+                  className={`py-2.5 px-1.5 sm:px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center ${
+                    sortField === 'cleanSheets' ? 'text-cyan-300' : ''
+                  }`}
                   title="Total Matches with Zero Goals Conceded"
                 >
                   <div className="flex items-center justify-center gap-0.5">
-                    <span>Clean Sheets</span>
+                    <span className="sm:hidden">CS</span>
+                    <span className="hidden sm:inline">Clean Sheets</span>
                     {renderSortIndicator('cleanSheets')}
                   </div>
                 </th>
@@ -360,7 +364,9 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                 {/* Clean Sheet Percentage */}
                 <th
                   onClick={() => handleSort('cleanSheetPct')}
-                  className="py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden sm:table-cell"
+                  className={`py-2.5 px-3 font-semibold cursor-pointer group/th hover:text-white transition text-center hidden sm:table-cell ${
+                    sortField === 'cleanSheetPct' ? 'text-cyan-300' : ''
+                  }`}
                   title="Percentage of Matches Ending in a Clean Sheet"
                 >
                   <div className="flex items-center justify-center gap-0.5">
@@ -380,7 +386,7 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                   <tr
                     key={item.team.id}
                     onClick={() => onSelectTeam(item.team)}
-                    className={`hover:bg-slate-800/50 cursor-pointer transition ${
+                    className={`group hover:bg-slate-800/50 cursor-pointer transition ${
                       isLeader
                         ? 'bg-cyan-950/20'
                         : isTop3
@@ -388,38 +394,40 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                         : ''
                     }`}
                   >
-                    {/* Rank */}
-                    <td className="py-2.5 px-3 text-center font-mono">
-                      {item.rank === 1 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 font-bold text-xs shadow-sm">
-                          1
-                        </span>
-                      ) : item.rank === 2 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-300/20 border border-slate-300/40 text-slate-200 font-bold text-xs">
-                          2
-                        </span>
-                      ) : item.rank === 3 && item.matchesPlayed > 0 ? (
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-cyan-800/20 border border-cyan-700/40 text-cyan-400 font-bold text-xs">
-                          3
-                        </span>
-                      ) : (
-                        <span className="text-slate-400 font-semibold">{item.rank}</span>
-                      )}
+                    {/* Rank (Sticky Left) */}
+                    <td className="py-2 px-1 sm:px-3 text-center font-mono font-bold sticky left-0 z-10 bg-[#0f1219] group-hover:bg-[#151a24] transition w-6 sm:w-10">
+                      <div className="flex items-center justify-center">
+                        {item.rank === 1 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-cyan-500 text-slate-950 font-black text-[10px] sm:text-xs shadow-sm shadow-cyan-500/20">
+                            1
+                          </span>
+                        ) : item.rank === 2 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-300 text-slate-950 font-bold text-[10px] sm:text-xs">
+                            2
+                          </span>
+                        ) : item.rank === 3 && item.matchesPlayed > 0 ? (
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-cyan-800 text-white font-bold text-[10px] sm:text-xs">
+                            3
+                          </span>
+                        ) : (
+                          <span className="text-slate-400 font-semibold text-[10px] sm:text-xs">{item.rank}</span>
+                        )}
+                      </div>
                     </td>
 
-                    {/* Club & Manager Stacked */}
-                    <td className="py-2.5 px-3">
-                      <div className="flex items-center gap-2.5">
-                        <TeamLogo team={item.team} size="sm" />
-                        <div className="min-w-0">
-                          <div className="font-bold text-white hover:text-cyan-400 transition truncate flex items-center gap-1.5">
-                            <span>{item.team.clubName}</span>
-                            <span className="text-[10px] text-slate-400 font-mono font-normal">
+                    {/* Club & Manager Stacked (Sticky Left next to Rank - Compact on Mobile) */}
+                    <td className="py-2 px-1.5 sm:px-3.5 sticky left-6 sm:left-10 z-10 bg-[#0f1219] group-hover:bg-[#151a24] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80 transition min-w-[88px] max-w-[105px] sm:min-w-[200px] sm:max-w-none">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5">
+                        <TeamLogo team={item.team} size="table" />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-white group-hover:text-cyan-400 transition truncate text-[11px] sm:text-sm leading-tight flex items-center gap-1">
+                            <span className="truncate">{item.team.clubName}</span>
+                            <span className="text-[9px] text-slate-400 font-mono font-normal hidden sm:inline">
                               ({item.team.shortCode})
                             </span>
                           </div>
                           {/* Player name displayed cleanly below team name */}
-                          <div className="text-[11px] text-slate-400 truncate">
+                          <div className="text-[9px] sm:text-[11px] text-slate-400 truncate leading-tight">
                             {item.team.managerName}
                           </div>
                         </div>
@@ -427,22 +435,22 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
                     </td>
 
                     {/* Matches Played */}
-                    <td className="py-2.5 px-2.5 text-center font-mono text-slate-300">
+                    <td className="py-2 sm:py-2.5 px-1 sm:px-2.5 text-center font-mono text-slate-300 text-xs">
                       {item.matchesPlayed}
                     </td>
 
                     {/* Conceded Per Match (Highlighted) */}
-                    <td className="py-2.5 px-3 text-center font-mono font-bold text-sm bg-cyan-500/5 text-cyan-400">
+                    <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-center font-mono font-bold text-xs sm:text-sm bg-cyan-500/5 text-cyan-400">
                       {item.matchesPlayed > 0 ? item.goalsConcededPerMatch.toFixed(2) : '-'}
                     </td>
 
                     {/* Total Goals Conceded */}
-                    <td className="py-2.5 px-3 text-center font-mono text-slate-200">
+                    <td className="py-2 sm:py-2.5 px-1.5 sm:px-3 text-center font-mono text-slate-200 text-xs sm:text-sm">
                       {item.goalsConceded}
                     </td>
 
                     {/* Clean Sheets */}
-                    <td className="py-2.5 px-3 text-center font-mono font-bold text-emerald-400">
+                    <td className="py-2 sm:py-2.5 px-1.5 sm:px-3 text-center font-mono font-bold text-emerald-400 text-xs sm:text-sm">
                       {item.matchesPlayed > 0 ? item.cleanSheets : '-'}
                     </td>
 

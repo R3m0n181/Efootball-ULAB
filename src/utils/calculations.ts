@@ -470,6 +470,13 @@ export function getTournamentSummary(
 
   const actualTeams = teams && teams.length > 0 ? teams : standings.map((s) => s.team);
 
+  let hottestStreakTeam: {
+    team: Team;
+    streakCount: number;
+    streakType: 'winning' | 'unbeaten';
+    formString: ('W' | 'D' | 'L')[];
+  } | null = null;
+
   if (actualTeams.length > 0 && completedMatches.length > 0) {
     const attackList = calculateTeamAttackLeaderboard(actualTeams, matches);
     if (attackList.length > 0 && attackList[0].matchesPlayed > 0) {
@@ -479,6 +486,105 @@ export function getTournamentSummary(
     const defenseList = calculateTeamDefenseLeaderboard(actualTeams, matches);
     if (defenseList.length > 0 && defenseList[0].matchesPlayed > 0) {
       topDefendingTeam = defenseList[0];
+    }
+
+    // Determine current hottest streak team
+    const teamMap = new Map<string, Team>();
+    actualTeams.forEach((t) => teamMap.set(t.id, t));
+
+    let bestStreak = 0;
+    let bestStreakTeam: Team | null = null;
+    let bestType: 'winning' | 'unbeaten' = 'winning';
+    let bestForm: ('W' | 'D' | 'L')[] = [];
+
+    actualTeams.forEach((t) => {
+      const tMatches = completedMatches.filter(
+        (m) => m.homeTeamId === t.id || m.awayTeamId === t.id
+      );
+      if (tMatches.length === 0) return;
+
+      const outcomes: ('W' | 'D' | 'L')[] = [];
+      tMatches.forEach((m) => {
+        const isHome = m.homeTeamId === t.id;
+        const myScore = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0);
+        const oppScore = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0);
+        if (myScore > oppScore) outcomes.push('W');
+        else if (myScore < oppScore) outcomes.push('L');
+        else outcomes.push('D');
+      });
+
+      // Calculate current active streak from end
+      let activeWins = 0;
+      for (let i = outcomes.length - 1; i >= 0; i--) {
+        if (outcomes[i] === 'W') activeWins++;
+        else break;
+      }
+
+      let activeUnbeaten = 0;
+      for (let i = outcomes.length - 1; i >= 0; i--) {
+        if (outcomes[i] === 'W' || outcomes[i] === 'D') activeUnbeaten++;
+        else break;
+      }
+
+      if (activeWins > bestStreak && activeWins >= 2) {
+        bestStreak = activeWins;
+        bestStreakTeam = t;
+        bestType = 'winning';
+        bestForm = outcomes.slice(-5);
+      } else if (bestStreak < 2 && activeUnbeaten > bestStreak && activeUnbeaten >= 3) {
+        bestStreak = activeUnbeaten;
+        bestStreakTeam = t;
+        bestType = 'unbeaten';
+        bestForm = outcomes.slice(-5);
+      }
+    });
+
+    // Fallback: If no active multi-game streak, choose best last-5 points form
+    if (!bestStreakTeam) {
+      let maxPointsLast5 = -1;
+      let topFormTeam: Team | null = null;
+      let topFormOutcomes: ('W' | 'D' | 'L')[] = [];
+
+      actualTeams.forEach((t) => {
+        const tMatches = completedMatches.filter(
+          (m) => m.homeTeamId === t.id || m.awayTeamId === t.id
+        );
+        if (tMatches.length === 0) return;
+
+        const outcomes: ('W' | 'D' | 'L')[] = [];
+        tMatches.forEach((m) => {
+          const isHome = m.homeTeamId === t.id;
+          const myScore = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0);
+          const oppScore = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0);
+          if (myScore > oppScore) outcomes.push('W');
+          else if (myScore < oppScore) outcomes.push('L');
+          else outcomes.push('D');
+        });
+
+        const last5 = outcomes.slice(-5);
+        const pts = last5.reduce((sum, r) => sum + (r === 'W' ? 3 : r === 'D' ? 1 : 0), 0);
+        if (pts > maxPointsLast5) {
+          maxPointsLast5 = pts;
+          topFormTeam = t;
+          topFormOutcomes = last5;
+        }
+      });
+
+      if (topFormTeam) {
+        bestStreakTeam = topFormTeam;
+        bestStreak = topFormOutcomes.filter((r) => r === 'W').length;
+        bestType = 'winning';
+        bestForm = topFormOutcomes;
+      }
+    }
+
+    if (bestStreakTeam) {
+      hottestStreakTeam = {
+        team: bestStreakTeam,
+        streakCount: bestStreak,
+        streakType: bestType,
+        formString: bestForm,
+      };
     }
   }
 
@@ -493,5 +599,6 @@ export function getTournamentSummary(
     topScoringTeam,
     topDefendingTeam,
     mostCleanSheetsTeam: topDefendingTeam,
+    hottestStreakTeam,
   };
 }
