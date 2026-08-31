@@ -116,14 +116,14 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
     | 'longestScoringStreak'
     | 'form';
 
-  const [streakSortField, setStreakSortField] = useState<StreakSortField>('longestUnbeatenStreak');
+  const [streakSortField, setStreakSortField] = useState<StreakSortField>('currentUnbeatenStreak');
   const [streakSortDirection, setStreakSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const isStreakSortChanged =
-    streakSortField !== 'longestUnbeatenStreak' || streakSortDirection !== 'desc';
+    streakSortField !== 'currentUnbeatenStreak' || streakSortDirection !== 'desc';
 
   const resetStreakSort = () => {
-    setStreakSortField('longestUnbeatenStreak');
+    setStreakSortField('currentUnbeatenStreak');
     setStreakSortDirection('desc');
   };
 
@@ -1219,7 +1219,20 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                       </span>
                     </th>
 
-                    {/* 6. Form */}
+                    {/* 6. Clean Sheet Streak */}
+                    <th
+                      onClick={() => handleStreakSort('longestCleanSheetStreak')}
+                      className="py-2.5 sm:py-3 px-1 sm:px-2 text-center cursor-pointer hover:text-cyan-200 transition group whitespace-nowrap text-cyan-300"
+                      title="Most Consecutive Matches with Clean Sheet (0 Goals Conceded)"
+                    >
+                      <span className="inline-flex items-center justify-center">
+                        <span className="sm:hidden">Clean Sheet</span>
+                        <span className="hidden sm:inline">Clean Sheet Streak</span>
+                        {renderStreakSortIcon('longestCleanSheetStreak')}
+                      </span>
+                    </th>
+
+                    {/* 7. Form */}
                     <th
                       onClick={() => handleStreakSort('form')}
                       className="py-2.5 sm:py-3 px-1.5 sm:px-3 text-center cursor-pointer hover:text-white transition group whitespace-nowrap"
@@ -1345,7 +1358,21 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                         )}
                       </td>
 
-                      {/* 6. Last 5 Form */}
+                      {/* 6. Clean Sheet Streak */}
+                      <td className="py-2 sm:py-2.5 px-1.5 sm:px-2 text-center font-mono">
+                        {item.longestCleanSheetStreak > 0 ? (
+                          <span className="px-1.5 sm:px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[11px] sm:text-xs inline-block whitespace-nowrap font-bold">
+                            <span className="sm:hidden">{item.longestCleanSheetStreak}G</span>
+                            <span className="hidden sm:inline">
+                              {item.longestCleanSheetStreak} {item.longestCleanSheetStreak === 1 ? 'game' : 'games'}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-600 text-xs">—</span>
+                        )}
+                      </td>
+
+                      {/* 7. Last 5 Form */}
                       <td className="py-2 sm:py-2.5 px-2 sm:px-3 text-center">
                         <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                           {item.last5Form.length === 0 ? (
