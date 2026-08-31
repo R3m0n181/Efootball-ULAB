@@ -195,9 +195,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
               <h4 className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-emerald-400" />
-                <span>
-                  Home &amp; Away Fixture Schedule ({teamMatches.length} Matches{byeRounds.length > 0 ? ` • ${byeRounds.length} Rest MDs` : ''})
-                </span>
+                <span>Home &amp; Away Fixture Schedule</span>
               </h4>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 font-mono">
