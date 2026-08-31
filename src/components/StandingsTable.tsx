@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   ChevronRight,
@@ -16,12 +16,19 @@ import {
   Activity,
   CheckCircle2,
   HelpCircle,
+  Menu,
+  Check,
+  X,
 } from 'lucide-react';
-import { StandingsRow, Team } from '../types';
+import { StandingsRow, Team, Match, TournamentConfig } from '../types';
 import { TeamLogo } from './TeamLogo';
+import { calculateStandings } from '../utils/calculations';
 
 interface StandingsTableProps {
   standings: StandingsRow[];
+  teams?: Team[];
+  matches?: Match[];
+  config?: TournamentConfig;
   onSelectTeam: (team: Team) => void;
   onOpenSubmitModal: () => void;
   isAdmin?: boolean;
@@ -42,35 +49,60 @@ export type SortField =
 
 export const StandingsTable: React.FC<StandingsTableProps> = ({
   standings,
+  teams,
+  matches,
+  config,
   onSelectTeam,
   onOpenSubmitModal,
   isAdmin = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [venueFilter, setVenueFilter] = useState<'all' | 'home' | 'away'>('all');
   const [sortField, setSortField] = useState<SortField>('points');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   // Track if user manually switched mode
   const [userSelectedMode, setUserSelectedMode] = useState<boolean>(false);
+  const [isOptionsMenuOpen, setIsOptionsMenuOpen] = useState<boolean>(false);
+  const optionsMenuRef = useRef<HTMLDivElement>(null);
   
-  // Default to 'detailed' on laptops & desktop viewports (>= 768px), 'basic' on mobile (< 768px)
+  // Default to 'detailed' on tablet/desktop viewports (>= 640px), 'basic' on mobile (< 640px)
   const [viewMode, setViewMode] = useState<'basic' | 'detailed'>(() => {
     if (typeof window !== 'undefined') {
-      return window.innerWidth >= 768 ? 'detailed' : 'basic';
+      return window.innerWidth >= 640 ? 'detailed' : 'basic';
     }
-    return 'detailed';
+    return 'basic';
   });
 
   useEffect(() => {
     const handleResize = () => {
       if (!userSelectedMode && typeof window !== 'undefined') {
-        const isDesktopOrLaptop = window.innerWidth >= 768;
-        setViewMode(isDesktopOrLaptop ? 'detailed' : 'basic');
+        const isDesktopOrTablet = window.innerWidth >= 640;
+        setViewMode(isDesktopOrTablet ? 'detailed' : 'basic');
       }
     };
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [userSelectedMode]);
+
+  // Close options menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        optionsMenuRef.current &&
+        !optionsMenuRef.current.contains(event.target as Node)
+      ) {
+        setIsOptionsMenuOpen(false);
+      }
+    };
+
+    if (isOptionsMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOptionsMenuOpen]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -93,8 +125,19 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
 
   const isDefaultSort = sortField === 'points' && sortDirection === 'desc';
 
+  // Compute standings based on active venue filter (All, Home, Away)
+  const activeStandings = useMemo(() => {
+    if (venueFilter === 'all' || !teams || !matches || !config) {
+      if (venueFilter !== 'all' && teams && matches && config) {
+        return calculateStandings(teams, matches, config, venueFilter);
+      }
+      return standings;
+    }
+    return calculateStandings(teams, matches, config, venueFilter);
+  }, [standings, teams, matches, config, venueFilter]);
+
   const filteredAndSortedStandings = useMemo(() => {
-    const filtered = standings.filter((row) => {
+    const filtered = activeStandings.filter((row) => {
       const matchSearch =
         row.team.clubName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.team.managerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -151,7 +194,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
       // Tiebreaker fallback: default official league rank order
       return a.rank - b.rank;
     });
-  }, [standings, searchTerm, sortField, sortDirection]);
+  }, [activeStandings, searchTerm, sortField, sortDirection]);
 
   // Helper component to render sort icon on table headers
   const renderSortIndicator = (field: SortField) => {
@@ -171,69 +214,190 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
     <div id="standings-table-container" className="space-y-3">
       {/* Control bar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-[#0f1219] p-2.5 rounded-xl border border-slate-800">
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            id="standings-search-input"
-            type="text"
-            placeholder="Search club (e.g. Bayern Munich, Arsenal) or manager..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
-          />
+        {/* Left: Venue Filter Tabs & Options Hamburger Menu */}
+        <div className="flex items-center gap-2">
+          {/* Venue Tabs: All, Home, Away */}
+          <div className="inline-flex items-center p-1 bg-[#0a0c10] rounded-xl border border-slate-800 shadow-inner">
+            <button
+              id="standings-venue-all-btn"
+              onClick={() => setVenueFilter('all')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                venueFilter === 'all'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              All
+            </button>
+            <button
+              id="standings-venue-home-btn"
+              onClick={() => setVenueFilter('home')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                venueFilter === 'home'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              Home
+            </button>
+            <button
+              id="standings-venue-away-btn"
+              onClick={() => setVenueFilter('away')}
+              className={`px-3 sm:px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                venueFilter === 'away'
+                  ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+              }`}
+            >
+              Away
+            </button>
+          </div>
+
+          {/* Options Dropdown Menu Button (Hamburger Only) */}
+          <div className="relative" ref={optionsMenuRef}>
+            <button
+              id="standings-table-options-btn"
+              type="button"
+              onClick={() => setIsOptionsMenuOpen((prev) => !prev)}
+              aria-label="Table view options"
+              title="Table view options (Basic / Detailed)"
+              className={`p-2 rounded-xl border text-xs font-medium transition-all flex items-center justify-center cursor-pointer ${
+                isOptionsMenuOpen
+                  ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-950/40'
+                  : 'bg-[#0a0c10] border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/80 hover:border-slate-700'
+              }`}
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+
+            {/* Mobile Backdrop & Dropdown Popover */}
+            {isOptionsMenuOpen && (
+              <>
+                {/* Backdrop for easy click/touch dismiss on mobile */}
+                <div
+                  className="fixed inset-0 z-40 bg-black/60 sm:hidden backdrop-blur-xs animate-in fade-in duration-150"
+                  onClick={() => setIsOptionsMenuOpen(false)}
+                  aria-hidden="true"
+                />
+
+                {/* Popover Card (Modal-like centered bottom sheet on mobile, clean dropdown on sm+) */}
+                <div className="fixed sm:absolute left-4 right-4 sm:left-0 sm:right-auto bottom-6 sm:bottom-auto sm:top-full sm:mt-1.5 sm:w-64 bg-[#121622] border border-slate-700/80 rounded-2xl sm:rounded-xl shadow-2xl z-50 p-3 sm:p-2 space-y-1.5 sm:space-y-1 animate-in fade-in slide-in-from-bottom-3 sm:slide-in-from-top-1 duration-150 backdrop-blur-md">
+                  <div className="px-2 py-1 text-xs sm:text-[10px] font-bold uppercase tracking-wider text-slate-300 sm:text-slate-400 border-b border-slate-800 pb-2 sm:pb-1.5 mb-1 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Menu className="w-3.5 h-3.5 text-emerald-400 sm:hidden" />
+                      <span>Table Display Mode</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] sm:text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-emerald-400 font-semibold uppercase">
+                        Active: {viewMode}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsOptionsMenuOpen(false)}
+                        className="sm:hidden p-1 text-slate-400 hover:text-white rounded-md hover:bg-slate-800"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    id="opt-view-basic"
+                    onClick={() => {
+                      setViewMode('basic');
+                      setUserSelectedMode(true);
+                      setIsOptionsMenuOpen(false);
+                    }}
+                    className={`w-full flex items-start gap-3 sm:gap-2.5 p-3 sm:p-2 rounded-xl sm:rounded-lg text-left transition cursor-pointer active:scale-[0.99] ${
+                      viewMode === 'basic'
+                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-white shadow-sm'
+                        : 'hover:bg-slate-800/80 border border-transparent text-slate-300'
+                    }`}
+                  >
+                    <LayoutList
+                      className={`w-4 h-4 mt-0.5 shrink-0 ${
+                        viewMode === 'basic' ? 'text-emerald-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm sm:text-xs font-bold">Basic Table</span>
+                        {viewMode === 'basic' && (
+                          <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-[10px] text-slate-400 leading-tight mt-0.5">
+                        Streamlined columns (Pos, Club, P, GD, Pts, Form)
+                      </p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="opt-view-detailed"
+                    onClick={() => {
+                      setViewMode('detailed');
+                      setUserSelectedMode(true);
+                      setIsOptionsMenuOpen(false);
+                    }}
+                    className={`w-full flex items-start gap-3 sm:gap-2.5 p-3 sm:p-2 rounded-xl sm:rounded-lg text-left transition cursor-pointer active:scale-[0.99] ${
+                      viewMode === 'detailed'
+                        ? 'bg-emerald-500/20 border border-emerald-500/40 text-white shadow-sm'
+                        : 'hover:bg-slate-800/80 border border-transparent text-slate-300'
+                    }`}
+                  >
+                    <TableProperties
+                      className={`w-4 h-4 mt-0.5 shrink-0 ${
+                        viewMode === 'detailed' ? 'text-emerald-400' : 'text-slate-400'
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm sm:text-xs font-bold">Detailed Table</span>
+                        {viewMode === 'detailed' && (
+                          <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5 text-emerald-400 shrink-0" />
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-[10px] text-slate-400 leading-tight mt-0.5">
+                        Full statistics (W, D, L, GF, GA, Win%, PPG)
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        <div className="flex items-center justify-between sm:justify-end gap-3 text-xs text-slate-400 font-medium">
+        {/* Right: Search & Reset Sort */}
+        <div className="flex items-center gap-2 flex-1 sm:max-w-xs md:max-w-sm justify-end">
+          <div className="relative flex-1">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              id="standings-search-input"
+              type="text"
+              placeholder={
+                venueFilter === 'all'
+                  ? 'Search club or manager...'
+                  : `Search ${venueFilter} standings...`
+              }
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-[#0a0c10] border border-slate-800 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
+            />
+          </div>
+
           {!isDefaultSort && (
             <button
               onClick={resetToDefaultSort}
-              className="flex items-center gap-1 px-2 py-1 bg-slate-800/80 hover:bg-slate-700 text-emerald-400 rounded-md text-[11px] font-semibold transition cursor-pointer"
+              className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-emerald-400 rounded-lg text-[11px] font-semibold transition cursor-pointer shrink-0"
               title="Reset sorting to Points"
             >
               <RotateCcw className="w-3 h-3" />
-              <span>Reset Sort</span>
+              <span className="hidden sm:inline">Reset</span>
             </button>
           )}
-
-          <div>
-            Showing <span className="text-white font-bold">{filteredAndSortedStandings.length}</span> of {standings.length} Teams
-          </div>
-        </div>
-      </div>
-
-      {/* Highlighted View Mode Tabs */}
-      <div className="flex items-center">
-        <div className="inline-flex items-center p-1 bg-[#0a0c10] rounded-xl border-2 border-emerald-500/40 shadow-md shadow-emerald-950/40 w-full sm:w-auto">
-          <button
-            id="standings-mode-basic-btn"
-            onClick={() => {
-              setViewMode('basic');
-              setUserSelectedMode(true);
-            }}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'basic'
-                ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30 font-black'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <LayoutList className="w-3.5 h-3.5" />
-            <span>Basic Table</span>
-          </button>
-          <button
-            id="standings-mode-detailed-btn"
-            onClick={() => {
-              setViewMode('detailed');
-              setUserSelectedMode(true);
-            }}
-            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              viewMode === 'detailed'
-                ? 'bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/30 font-black'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-            }`}
-          >
-            <TableProperties className="w-3.5 h-3.5" />
-            <span>Detailed Table</span>
-          </button>
         </div>
       </div>
 

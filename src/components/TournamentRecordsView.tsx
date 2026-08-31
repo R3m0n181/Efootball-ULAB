@@ -51,7 +51,7 @@ interface TournamentRecordsViewProps {
   onViewMatchDetail?: (match: Match) => void;
 }
 
-type TabType = 'highs' | 'attack' | 'defense' | 'streaks' | 'homeaway' | 'efficiency' | 'points';
+type TabType = 'attack' | 'defense' | 'highs' | 'streaks' | 'efficiency' | 'points';
 
 export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
   teams,
@@ -60,7 +60,7 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
   config,
   attackStats: externalAttackStats,
   defenseStats: externalDefenseStats,
-  initialSubTab = 'homeaway',
+  initialSubTab = 'attack',
   onSelectTeam,
   onViewMatchDetail,
 }) => {
@@ -535,27 +535,11 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
             <h2 className="text-lg sm:text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
               <span>League Records &amp; Statistics</span>
             </h2>
-            <p className="text-[11px] sm:text-xs md:text-sm text-slate-400 max-w-3xl leading-relaxed">
-              Deep dive into match thrillers, attack firepower, defensive fortresses, winning streaks, home/away splits, efficiency ratios, and championship point ceilings.
-            </p>
           </div>
         </div>
 
-        {/* 7 Records & Analytics Sub-Tabs - Mobile Optimized with smooth scroll */}
+        {/* 6 Records & Analytics Sub-Tabs - Mobile Optimized with smooth scroll */}
         <div className="mt-3.5 sm:mt-5 pt-3 sm:pt-4 border-t border-slate-800/80 flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 no-scrollbar">
-          <button
-            id="tab-records-homeaway"
-            onClick={() => setActiveTab('homeaway')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition whitespace-nowrap cursor-pointer shrink-0 ${
-              activeTab === 'homeaway'
-                ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 font-black'
-                : 'bg-[#0a0c10] text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
-            }`}
-          >
-            <Castle className={`w-3.5 h-3.5 ${activeTab === 'homeaway' ? 'text-slate-950' : 'text-emerald-400'}`} />
-            <span>Home vs Away</span>
-          </button>
-
           <button
             id="tab-records-attack"
             onClick={() => setActiveTab('attack')}

@@ -204,7 +204,7 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
         </div>
 
         {/* Quick League Overview Card */}
-        <div className="rounded-xl border border-slate-800 bg-[#0f1219] p-3.5 flex flex-col justify-between space-y-2.5">
+        <div className="rounded-xl border border-slate-800 bg-[#0f1219] p-3.5 flex flex-col justify-center space-y-2.5">
           <div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider flex items-center gap-1.5">
@@ -229,13 +229,6 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="flex items-start gap-1.5 text-[10px] text-slate-400 bg-amber-950/20 border border-amber-500/20 rounded-lg p-2">
-            <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-            <span>
-              <strong>Ranking Metric:</strong> Primary sort is <strong>Goals Scored / Match</strong>. Tiebreakers: Total Goals (GF), Goal Difference (GD), Matches Played.
-            </span>
           </div>
         </div>
       </div>

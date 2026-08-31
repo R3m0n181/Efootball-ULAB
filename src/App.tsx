@@ -357,6 +357,9 @@ export default function App() {
         {activeTab === 'standings' && (
           <StandingsTable
             standings={standings}
+            teams={teams}
+            matches={matches}
+            config={config}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
             onOpenSubmitModal={() => handleOpenSubmitForMatch(null)}
             isAdmin={!!adminUser}

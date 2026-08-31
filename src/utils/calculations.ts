@@ -11,7 +11,8 @@ import {
 export function calculateStandings(
   teams: Team[],
   matches: Match[],
-  config: TournamentConfig
+  config: TournamentConfig,
+  venue: 'all' | 'home' | 'away' = 'all'
 ): StandingsRow[] {
   const teamMap = new Map<string, Team>();
   teams.forEach((t) => teamMap.set(t.id, t));
@@ -68,86 +69,104 @@ export function calculateStandings(
 
     if (!homeStats || !awayStats || m.homeScore === null || m.awayScore === null) return;
 
-    homeStats.played += 1;
-    awayStats.played += 1;
+    const includeHome = venue === 'all' || venue === 'home';
+    const includeAway = venue === 'all' || venue === 'away';
 
-    homeStats.goalsFor += m.homeScore;
-    homeStats.goalsAgainst += m.awayScore;
-    awayStats.goalsFor += m.awayScore;
-    awayStats.goalsAgainst += m.homeScore;
+    if (includeHome) {
+      homeStats.played += 1;
+      homeStats.goalsFor += m.homeScore;
+      homeStats.goalsAgainst += m.awayScore;
+      if (m.awayScore === 0) homeStats.cleanSheets += 1;
+    }
 
-    if (m.awayScore === 0) homeStats.cleanSheets += 1;
-    if (m.homeScore === 0) awayStats.cleanSheets += 1;
+    if (includeAway) {
+      awayStats.played += 1;
+      awayStats.goalsFor += m.awayScore;
+      awayStats.goalsAgainst += m.homeScore;
+      if (m.homeScore === 0) awayStats.cleanSheets += 1;
+    }
 
     if (m.homeScore > m.awayScore) {
       // Home Win
-      homeStats.won += 1;
-      homeStats.points += config.pointsForWin;
-      homeStats.form.push('W');
-      homeStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
-        result: 'W',
-        score: `${m.homeScore}-${m.awayScore}`,
-        isHome: true,
-      });
+      if (includeHome) {
+        homeStats.won += 1;
+        homeStats.points += config.pointsForWin;
+        homeStats.form.push('W');
+        homeStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
+          result: 'W',
+          score: `${m.homeScore}-${m.awayScore}`,
+          isHome: true,
+        });
+      }
 
-      awayStats.lost += 1;
-      awayStats.points += config.pointsForLoss;
-      awayStats.form.push('L');
-      awayStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
-        result: 'L',
-        score: `${m.awayScore}-${m.homeScore}`,
-        isHome: false,
-      });
+      if (includeAway) {
+        awayStats.lost += 1;
+        awayStats.points += config.pointsForLoss;
+        awayStats.form.push('L');
+        awayStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
+          result: 'L',
+          score: `${m.awayScore}-${m.homeScore}`,
+          isHome: false,
+        });
+      }
     } else if (m.homeScore < m.awayScore) {
       // Away Win
-      awayStats.won += 1;
-      awayStats.points += config.pointsForWin;
-      awayStats.form.push('W');
-      awayStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
-        result: 'W',
-        score: `${m.awayScore}-${m.homeScore}`,
-        isHome: false,
-      });
+      if (includeAway) {
+        awayStats.won += 1;
+        awayStats.points += config.pointsForWin;
+        awayStats.form.push('W');
+        awayStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
+          result: 'W',
+          score: `${m.awayScore}-${m.homeScore}`,
+          isHome: false,
+        });
+      }
 
-      homeStats.lost += 1;
-      homeStats.points += config.pointsForLoss;
-      homeStats.form.push('L');
-      homeStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
-        result: 'L',
-        score: `${m.homeScore}-${m.awayScore}`,
-        isHome: true,
-      });
+      if (includeHome) {
+        homeStats.lost += 1;
+        homeStats.points += config.pointsForLoss;
+        homeStats.form.push('L');
+        homeStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
+          result: 'L',
+          score: `${m.homeScore}-${m.awayScore}`,
+          isHome: true,
+        });
+      }
     } else {
       // Draw
-      homeStats.drawn += 1;
-      homeStats.points += config.pointsForDraw;
-      homeStats.form.push('D');
-      homeStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
-        result: 'D',
-        score: `${m.homeScore}-${m.awayScore}`,
-        isHome: true,
-      });
+      if (includeHome) {
+        homeStats.drawn += 1;
+        homeStats.points += config.pointsForDraw;
+        homeStats.form.push('D');
+        homeStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
+          result: 'D',
+          score: `${m.homeScore}-${m.awayScore}`,
+          isHome: true,
+        });
+      }
 
-      awayStats.drawn += 1;
-      awayStats.points += config.pointsForDraw;
-      awayStats.form.push('D');
-      awayStats.recentMatches.push({
-        matchId: m.id,
-        opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
-        result: 'D',
-        score: `${m.awayScore}-${m.homeScore}`,
-        isHome: false,
-      });
+      if (includeAway) {
+        awayStats.drawn += 1;
+        awayStats.points += config.pointsForDraw;
+        awayStats.form.push('D');
+        awayStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
+          result: 'D',
+          score: `${m.awayScore}-${m.homeScore}`,
+          isHome: false,
+        });
+      }
     }
   });
 
