@@ -32,7 +32,7 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
   onSelectTeam,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<SortField>('rank');
+  const [sortField, setSortField] = useState<SortField>('goalsConcededPerMatch');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   const topDefendingTeam = defenseStats.find((s) => s.matchesPlayed > 0) || null;
@@ -75,10 +75,11 @@ export const DefenseRankingView: React.FC<DefenseRankingViewProps> = ({
     }
   };
 
-  const isDefaultSort = sortField === 'rank' && sortDirection === 'asc';
+  const isDefaultSort =
+    sortField === 'goalsConcededPerMatch' && sortDirection === 'asc';
 
   const resetToDefaultSort = () => {
-    setSortField('rank');
+    setSortField('goalsConcededPerMatch');
     setSortDirection('asc');
   };
 

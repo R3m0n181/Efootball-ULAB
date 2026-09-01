@@ -33,8 +33,8 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
   onSelectTeam,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<SortField>('rank');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<SortField>('goalsPerMatch');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   const topAttackingTeam = attackStats.find((s) => s.matchesPlayed > 0) || null;
 
@@ -66,11 +66,11 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
     }
   };
 
-  const isDefaultSort = sortField === 'rank' && sortDirection === 'asc';
+  const isDefaultSort = sortField === 'goalsPerMatch' && sortDirection === 'desc';
 
   const resetToDefaultSort = () => {
-    setSortField('rank');
-    setSortDirection('asc');
+    setSortField('goalsPerMatch');
+    setSortDirection('desc');
   };
 
   const filteredAndSorted = useMemo(() => {
