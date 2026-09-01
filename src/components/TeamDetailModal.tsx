@@ -253,18 +253,13 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
     <div
       id="team-detail-modal-backdrop"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto"
     >
       <div
         id="team-detail-modal-content"
         onClick={(e) => e.stopPropagation()}
-        className="bg-[#0f1219] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[88vh] sm:max-h-[85vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200"
+        className="bg-[#0f1219] border border-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[88vh] sm:max-h-[85vh] flex flex-col animate-in zoom-in-95 duration-200"
       >
-        {/* Mobile Native Pull-Bar Handle */}
-        <div className="sm:hidden pt-2.5 pb-1 flex justify-center items-center bg-[#0a0c10]/90 border-b border-slate-800/40">
-          <div className="w-10 h-1.5 rounded-full bg-slate-500/70" />
-        </div>
-
         {/* Header with Team Branding - Club Name First, Player Below */}
         <div
           className="p-3.5 sm:p-4 relative border-b border-slate-800 flex items-start justify-between text-white"
