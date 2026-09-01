@@ -361,9 +361,10 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
             </thead>
 
             <tbody className="divide-y divide-slate-800/60 font-medium">
-              {filteredAndSorted.map((item) => {
-                const isLeader = item.rank === 1 && item.matchesPlayed > 0;
-                const isTop3 = item.rank <= 3 && item.matchesPlayed > 0;
+              {filteredAndSorted.map((item, index) => {
+                const position = index + 1;
+                const isLeader = position === 1 && item.matchesPlayed > 0;
+                const isTop3 = position <= 3 && item.matchesPlayed > 0;
 
                 return (
                   <tr
@@ -380,20 +381,20 @@ export const AttackRankingView: React.FC<AttackRankingViewProps> = ({
                     {/* Rank (Sticky Left) */}
                     <td className="py-2 px-1 sm:px-3 text-center font-mono font-bold sticky left-0 z-10 bg-[#0f1219] group-hover:bg-[#151a24] transition w-6 sm:w-10">
                       <div className="flex items-center justify-center">
-                        {item.rank === 1 && item.matchesPlayed > 0 ? (
+                        {position === 1 && item.matchesPlayed > 0 ? (
                           <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-500 text-slate-950 font-black text-[10px] sm:text-xs shadow-sm shadow-amber-500/20">
                             1
                           </span>
-                        ) : item.rank === 2 && item.matchesPlayed > 0 ? (
+                        ) : position === 2 && item.matchesPlayed > 0 ? (
                           <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-slate-300 text-slate-950 font-bold text-[10px] sm:text-xs">
                             2
                           </span>
-                        ) : item.rank === 3 && item.matchesPlayed > 0 ? (
+                        ) : position === 3 && item.matchesPlayed > 0 ? (
                           <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-amber-700 text-white font-bold text-[10px] sm:text-xs">
                             3
                           </span>
                         ) : (
-                          <span className="text-slate-400 font-semibold text-[10px] sm:text-xs">{item.rank}</span>
+                          <span className="text-slate-400 font-semibold text-[10px] sm:text-xs">{position}</span>
                         )}
                       </div>
                     </td>
