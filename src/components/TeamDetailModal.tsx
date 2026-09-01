@@ -236,11 +236,11 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   }, [teamMatches, team.id, teamMap, teams]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
-      <div className="bg-[#0f1219] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-xs">
+      <div className="bg-[#0f1219] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-xl w-full max-w-2xl shadow-2xl overflow-hidden h-[90vh] sm:h-auto sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
         {/* Header with Team Branding - Club Name First, Player Below */}
         <div
-          className="p-3.5 sm:p-4 relative border-b border-slate-800 flex items-start justify-between text-white"
+          className="p-3 sm:p-4 relative border-b border-slate-800 flex items-start justify-between text-white shrink-0"
           style={{
             background: `linear-gradient(135deg, ${team.color}35 0%, #0a0c10 100%)`,
           }}
@@ -249,9 +249,9 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
             <TeamLogo team={team} size="lg" className="border border-white/20 shadow-lg shrink-0" />
             <div className="min-w-0">
               {/* Club Name First */}
-              <h3 className="text-base sm:text-xl font-black truncate">{team.clubName}</h3>
+              <h3 className="text-sm sm:text-xl font-black truncate">{team.clubName}</h3>
               {/* Player Name Below */}
-              <p className="text-xs text-slate-300 font-medium truncate">
+              <p className="text-[11px] sm:text-xs text-slate-300 font-medium truncate">
                 Player / Manager: <span className="text-white font-semibold">{team.managerName}</span>
               </p>
             </div>
@@ -270,56 +270,56 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
 
         {/* Stats Strip */}
         {standingsRow && (
-          <div className="bg-[#0a0c10] px-4 py-2.5 border-b border-slate-800 grid grid-cols-4 sm:grid-cols-7 gap-2 text-center text-xs">
+          <div className="bg-[#0a0c10] px-3 sm:px-4 py-2 border-b border-slate-800 grid grid-cols-4 sm:grid-cols-7 gap-1.5 sm:gap-2 text-center text-xs shrink-0">
             <div>
               <div className="text-[9px] text-slate-500 uppercase">Rank</div>
-              <div className="text-sm font-black font-mono text-emerald-400">#{standingsRow.rank}</div>
+              <div className="text-xs sm:text-sm font-black font-mono text-emerald-400">#{standingsRow.rank}</div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">PTS</div>
-              <div className="text-sm font-black font-mono text-white">{standingsRow.points}</div>
+              <div className="text-xs sm:text-sm font-black font-mono text-white">{standingsRow.points}</div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">Played</div>
-              <div className="text-sm font-bold font-mono text-slate-300">{standingsRow.played}</div>
+              <div className="text-xs sm:text-sm font-bold font-mono text-slate-300">{standingsRow.played}</div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">W - D - L</div>
-              <div className="text-[11px] font-bold font-mono text-slate-300 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] font-bold font-mono text-slate-300 mt-0.5">
                 {standingsRow.won}-{standingsRow.drawn}-{standingsRow.lost}
               </div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">GF / GA</div>
-              <div className="text-[11px] font-mono text-slate-400 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 mt-0.5">
                 {standingsRow.goalsFor} / {standingsRow.goalsAgainst}
               </div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">GD</div>
-              <div className="text-[11px] font-bold font-mono text-emerald-400 mt-0.5">
+              <div className="text-[10px] sm:text-[11px] font-bold font-mono text-emerald-400 mt-0.5">
                 {standingsRow.goalDifference > 0 ? `+${standingsRow.goalDifference}` : standingsRow.goalDifference}
               </div>
             </div>
             <div>
               <div className="text-[9px] text-slate-500 uppercase">Clean Sheets</div>
-              <div className="text-sm font-bold font-mono text-indigo-400">{standingsRow.cleanSheets}</div>
+              <div className="text-xs sm:text-sm font-bold font-mono text-indigo-400">{standingsRow.cleanSheets}</div>
             </div>
           </div>
         )}
 
         {/* Recent Form Banner */}
         {standingsRow && standingsRow.form.length > 0 && (
-          <div className="bg-[#0a0c10]/90 px-4 py-2 border-b border-slate-800 flex items-center justify-between">
+          <div className="bg-[#0a0c10]/90 px-3 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 flex items-center justify-between shrink-0">
             <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
               Recent Form (Last 5)
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1 sm:gap-1.5">
               {standingsRow.recentMatches.map((match, idx) => (
                 <span
                   key={idx}
                   title={`${match.isHome ? 'vs' : '@'} ${match.opponentShortCode} (${match.score})`}
-                  className={`w-5 h-5 rounded flex items-center justify-center text-[10px] font-bold font-mono ${
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded flex items-center justify-center text-[9px] sm:text-[10px] font-bold font-mono ${
                     match.result === 'W'
                       ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                       : match.result === 'D'
@@ -335,7 +335,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
         )}
 
         {/* Modal Scrollable Body */}
-        <div className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
+        <div className="p-3 sm:p-4 overflow-y-auto space-y-3.5 sm:space-y-4 text-xs text-slate-300 flex-1 min-h-0">
           {/* Club Records & Performance Metrics Card (5 Pillars) - Collapsible, Closed by default */}
           <div className="bg-[#0a0c10] border border-slate-800/90 rounded-xl overflow-hidden shadow-md">
             <div
