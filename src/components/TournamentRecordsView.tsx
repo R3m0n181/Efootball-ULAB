@@ -726,16 +726,11 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                   onClick={() => toggleHighsCategory('highestScoring')}
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-[#0a0c10] hover:bg-amber-500/10 border border-slate-800 hover:border-amber-500/30 text-slate-300 hover:text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.99]"
                 >
+                  <span>{expandedHighs.highestScoring ? 'Show less' : `View ${matchHighs.highestScoring.length - 1} more matches`}</span>
                   {expandedHighs.highestScoring ? (
-                    <>
-                      <span>Show less</span>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronUp className="w-3.5 h-3.5" />
                   ) : (
-                    <>
-                      <span>View {matchHighs.highestScoring.length - 1} more matches</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}
@@ -831,16 +826,11 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                   onClick={() => toggleHighsCategory('biggestWins')}
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-[#0a0c10] hover:bg-rose-500/10 border border-slate-800 hover:border-rose-500/30 text-slate-300 hover:text-rose-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.99]"
                 >
+                  <span>{expandedHighs.biggestWins ? 'Show less' : `View ${matchHighs.biggestWins.length - 1} more matches`}</span>
                   {expandedHighs.biggestWins ? (
-                    <>
-                      <span>Show less</span>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronUp className="w-3.5 h-3.5" />
                   ) : (
-                    <>
-                      <span>View {matchHighs.biggestWins.length - 1} more matches</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}
@@ -934,16 +924,11 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                   onClick={() => toggleHighsCategory('singleTeam')}
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-[#0a0c10] hover:bg-emerald-500/10 border border-slate-800 hover:border-emerald-500/30 text-slate-300 hover:text-emerald-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.99]"
                 >
+                  <span>{expandedHighs.singleTeam ? 'Show less' : `View ${matchHighs.highestSingleTeamScores.length - 1} more matches`}</span>
                   {expandedHighs.singleTeam ? (
-                    <>
-                      <span>Show less</span>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronUp className="w-3.5 h-3.5" />
                   ) : (
-                    <>
-                      <span>View {matchHighs.highestSingleTeamScores.length - 1} more matches</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}
@@ -1029,16 +1014,11 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
                   onClick={() => toggleHighsCategory('awayWins')}
                   className="w-full mt-2 py-1.5 px-3 rounded-lg bg-[#0a0c10] hover:bg-cyan-500/10 border border-slate-800 hover:border-cyan-500/30 text-slate-300 hover:text-cyan-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-[0.99]"
                 >
+                  <span>{expandedHighs.awayWins ? 'Show less' : `View ${matchHighs.biggestAwayWins.length - 1} more matches`}</span>
                   {expandedHighs.awayWins ? (
-                    <>
-                      <span>Show less</span>
-                      <ChevronUp className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronUp className="w-3.5 h-3.5" />
                   ) : (
-                    <>
-                      <span>View {matchHighs.biggestAwayWins.length - 1} more matches</span>
-                      <ChevronDown className="w-3.5 h-3.5" />
-                    </>
+                    <ChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}

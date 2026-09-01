@@ -347,16 +347,11 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
             className="px-4 py-1.5 text-xs font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg transition shadow-sm shadow-emerald-500/20 active:scale-95 flex items-center gap-1.5 cursor-pointer"
           >
             {isCompressing ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                <span>Processing Image...</span>
-              </>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <>
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Confirm & Update Standings</span>
-              </>
+              <CheckCircle2 className="w-3.5 h-3.5" />
             )}
+            <span>{isCompressing ? 'Processing Image...' : 'Confirm & Update Standings'}</span>
           </button>
         </div>
       </div>

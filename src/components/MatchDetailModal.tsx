@@ -133,7 +133,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   };
 
   return (
-    <>
+    <div id="match-detail-modal-root">
       <div
         className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-black/85 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200"
         onClick={onClose}
@@ -502,6 +502,6 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 };

@@ -156,16 +156,11 @@ export const ShareFixtureCardModal: React.FC<ShareFixtureCardModalProps> = ({
               className="w-full py-2 px-3 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition shadow-sm shadow-emerald-500/20 active:scale-95 cursor-pointer"
             >
               {copied ? (
-                <>
-                  <Check className="w-3.5 h-3.5" />
-                  <span>Copied for WhatsApp / Discord / Messenger!</span>
-                </>
+                <Check className="w-3.5 h-3.5" />
               ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy Match Summary</span>
-                </>
+                <Copy className="w-3.5 h-3.5" />
               )}
+              <span>{copied ? 'Copied for WhatsApp / Discord / Messenger!' : 'Copy Match Summary'}</span>
             </button>
           </div>
         </div>

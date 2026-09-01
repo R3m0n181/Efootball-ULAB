@@ -95,16 +95,16 @@ export const Header: React.FC<HeaderProps> = ({
                   eFootball Mobile
                 </span>
                 {adminUser && (
-                  <>
-                    <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.2 rounded-full">
-                      <span className={`w-1.5 h-1.5 rounded-full ${isCloudSynced ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
-                      {isCloudSynced ? 'Cloud Live Sync' : 'Connecting...'}
-                    </span>
-                    <span className="flex items-center gap-1 text-[10px] text-emerald-300 font-bold bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 rounded-full">
-                      <Unlock className="w-3 h-3 text-emerald-400" />
-                      Admin Access
-                    </span>
-                  </>
+                  <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.2 rounded-full">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isCloudSynced ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                    {isCloudSynced ? 'Cloud Live Sync' : 'Connecting...'}
+                  </span>
+                )}
+                {adminUser && (
+                  <span className="flex items-center gap-1 text-[10px] text-emerald-300 font-bold bg-emerald-500/15 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                    <Unlock className="w-3 h-3 text-emerald-400" />
+                    Admin Access
+                  </span>
                 )}
               </div>
               <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2 mt-0.5">
@@ -219,7 +219,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="mt-2 flex items-center justify-between gap-2 min-w-0">
                 {leader && completedMatches > 0 ? (
-                  <>
+                  <div className="flex items-center justify-between gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo team={leader.team} size="md" />
                       <div className="min-w-0">
@@ -240,7 +240,7 @@ export const Header: React.FC<HeaderProps> = ({
                         GD {leader.goalDifference > 0 ? `+${leader.goalDifference}` : leader.goalDifference} • {leader.won}W
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="text-slate-400 text-xs py-1">Awaiting match results</div>
                 )}
@@ -275,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="mt-2 flex items-center justify-between gap-2 min-w-0">
                 {topScoringTeam && completedMatches > 0 ? (
-                  <>
+                  <div className="flex items-center justify-between gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo team={topScoringTeam.team} size="md" />
                       <div className="min-w-0">
@@ -296,7 +296,7 @@ export const Header: React.FC<HeaderProps> = ({
                         {topScoringTeam.goalsPerMatch} /match
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="text-slate-400 text-xs py-1">Awaiting match results</div>
                 )}
@@ -331,7 +331,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="mt-2 flex items-center justify-between gap-2 min-w-0">
                 {defendingTeam && completedMatches > 0 ? (
-                  <>
+                  <div className="flex items-center justify-between gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo team={defendingTeam.team} size="md" />
                       <div className="min-w-0">
@@ -352,7 +352,7 @@ export const Header: React.FC<HeaderProps> = ({
                         {defendingTeam.cleanSheets} Clean Sheets
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="text-slate-400 text-xs py-1">Awaiting match results</div>
                 )}
@@ -389,7 +389,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               <div className="mt-2 flex items-center justify-between gap-2 min-w-0">
                 {hottestStreakTeam && completedMatches > 0 ? (
-                  <>
+                  <div className="flex items-center justify-between gap-2 min-w-0 w-full">
                     <div className="flex items-center gap-2 min-w-0">
                       <TeamLogo team={hottestStreakTeam.team} size="md" />
                       <div className="min-w-0">
@@ -426,7 +426,7 @@ export const Header: React.FC<HeaderProps> = ({
                           : 'Top Recent Form'}
                       </div>
                     </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="text-slate-400 text-xs py-1">Awaiting match results</div>
                 )}
