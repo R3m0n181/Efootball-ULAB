@@ -2,6 +2,8 @@ import {
   doc,
   setDoc,
   getDoc,
+  getDocs,
+  collection,
   deleteDoc,
   onSnapshot,
 } from 'firebase/firestore';
@@ -235,6 +237,140 @@ export function subscribeToMatchProof(
     );
     return unsubscribe;
   } catch {
+    return () => {};
+  }
+}
+
+/**
+ * Synchronously retrieves cached proof from memory or localStorage if available
+ */
+export function getCachedMatchProof(matchId: string): string | null {
+  if (!matchId) return null;
+  if (proofMemoryCache.has(matchId)) {
+    return proofMemoryCache.get(matchId) || null;
+  }
+  try {
+    const local = localStorage.getItem(`${LOCAL_PROOF_PREFIX}${matchId}`);
+    if (local) {
+      proofMemoryCache.set(matchId, local);
+      return local;
+    }
+  } catch {
+    // Ignore
+  }
+  return null;
+}
+
+/**
+ * Fetches all available match proofs in a single batch read (used by Admin Dashboard)
+ */
+export async function fetchAllMatchProofs(): Promise<Map<string, string>> {
+  const result = new Map<string, string>();
+
+  // Fill from memory cache
+  for (const [id, url] of proofMemoryCache.entries()) {
+    if (url) result.set(id, url);
+  }
+
+  // Check localStorage index
+  try {
+    const rawKeys = localStorage.getItem(LOCAL_PROOF_INDEX_KEY);
+    if (rawKeys) {
+      const keys: string[] = JSON.parse(rawKeys);
+      for (const k of keys) {
+        if (!result.has(k)) {
+          const localVal = localStorage.getItem(`${LOCAL_PROOF_PREFIX}${k}`);
+          if (localVal) {
+            result.set(k, localVal);
+            proofMemoryCache.set(k, localVal);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore
+  }
+
+  if (!db || !isFirebaseConfigured) {
+    return result;
+  }
+
+  try {
+    const proofsColRef = collection(db, PROOFS_COLLECTION);
+    const snap = await getDocs(proofsColRef);
+    snap.docs.forEach((d) => {
+      const data = d.data() as MatchProofRecord;
+      if (data && data.screenshotUrl) {
+        result.set(d.id, data.screenshotUrl);
+        proofMemoryCache.set(d.id, data.screenshotUrl);
+      }
+    });
+  } catch (err) {
+    console.warn('Could not fetch all proofs collection:', err);
+  }
+
+  return result;
+}
+
+/**
+ * Subscribes to real-time changes across the entire match proofs collection
+ * Ensures Admin Dashboard updates instantly whenever an audit screenshot is uploaded or edited
+ */
+export function subscribeToAllMatchProofs(
+  onUpdate: (proofsMap: Map<string, string>) => void
+): () => void {
+  // Prepopulate from cache
+  const initialMap = new Map<string, string>();
+  for (const [id, url] of proofMemoryCache.entries()) {
+    if (url) initialMap.set(id, url);
+  }
+  try {
+    const rawKeys = localStorage.getItem(LOCAL_PROOF_INDEX_KEY);
+    if (rawKeys) {
+      const keys: string[] = JSON.parse(rawKeys);
+      for (const k of keys) {
+        if (!initialMap.has(k)) {
+          const localVal = localStorage.getItem(`${LOCAL_PROOF_PREFIX}${k}`);
+          if (localVal) {
+            initialMap.set(k, localVal);
+            proofMemoryCache.set(k, localVal);
+          }
+        }
+      }
+    }
+  } catch {
+    // Ignore
+  }
+  onUpdate(new Map(initialMap));
+
+  if (!db || !isFirebaseConfigured) {
+    return () => {};
+  }
+
+  try {
+    const proofsColRef = collection(db, PROOFS_COLLECTION);
+    const unsubscribe = onSnapshot(
+      proofsColRef,
+      (snapshot) => {
+        const nextMap = new Map<string, string>();
+        snapshot.docs.forEach((d) => {
+          const data = d.data() as MatchProofRecord;
+          if (data && data.screenshotUrl) {
+            nextMap.set(d.id, data.screenshotUrl);
+            proofMemoryCache.set(d.id, data.screenshotUrl);
+          } else {
+            proofMemoryCache.set(d.id, null);
+          }
+        });
+        onUpdate(nextMap);
+      },
+      (err) => {
+        console.warn('Realtime subscription error for match_proofs collection:', err);
+      }
+    );
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Failed to listen to match_proofs collection:', err);
     return () => {};
   }
 }

@@ -13,6 +13,7 @@ import {
   updateMatchInCloud,
   updateMatchScreenshotInCloud,
   saveLeagueStateToCloud,
+  batchUpdateMatchesInCloud,
 } from './lib/firestoreLeague';
 import { testFirestoreConnection } from './lib/firebase';
 import {
@@ -35,6 +36,8 @@ import { MatchDetailModal } from './components/MatchDetailModal';
 import { ShareFixtureCardModal } from './components/ShareFixtureCardModal';
 import { TournamentSettingsModal } from './components/TournamentSettingsModal';
 import { AdminLoginModal } from './components/AdminLoginModal';
+import { AdminDashboardView } from './components/AdminDashboardView';
+import { ManagerLogView } from './components/ManagerLogView';
 import {
   SubmissionSuccessPopup,
   SubmittedMatchSummary,
@@ -51,7 +54,7 @@ export default function App() {
   );
 
   const [activeTab, setActiveTab] = useState<
-    'standings' | 'fixtures' | 'teams' | 'records'
+    'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin'
   >('standings');
 
   // Modal States
@@ -160,7 +163,17 @@ export default function App() {
   const handleLogoutAdmin = () => {
     logoutAdmin();
     setAdminUser(null);
+    if (activeTab === 'admin') {
+      setActiveTab('standings');
+    }
   };
+
+  // Guard against non-admin viewing the admin tab if session expires or user logs out
+  useEffect(() => {
+    if (activeTab === 'admin' && !adminUser) {
+      setActiveTab('standings');
+    }
+  }, [activeTab, adminUser]);
 
   // Protected Handlers (Saved to Firebase Firestore with instant real-time broadcast)
   const handleSaveMatch = async (updatedMatch: Match) => {
@@ -211,6 +224,154 @@ export default function App() {
         console.error('Failed to sync match screenshot to Firestore:', err);
       }
     }, 'Admin login is required to upload or modify match screenshots.');
+  };
+
+  const handleResetMatchScore = (matchId: string) => {
+    requireAdminAuth(async () => {
+      const targetMatch = matches.find((m) => m.id === matchId);
+      if (!targetMatch) return;
+
+      const resetMatch: Match = {
+        ...targetMatch,
+        homeScore: null,
+        awayScore: null,
+        status: 'scheduled',
+        playedAt: undefined,
+        submittedAt: undefined,
+        submittedBy: undefined,
+        screenshotUrl: undefined,
+      };
+
+      const newMatches = matches.map((m) => (m.id === matchId ? resetMatch : m));
+      setTournamentState((prev) => ({
+        ...prev,
+        matches: newMatches,
+      }));
+
+      try {
+        await updateMatchInCloud(resetMatch, matches);
+      } catch (err) {
+        console.error('Failed to sync match reset to Firestore:', err);
+      }
+    }, 'Admin authentication is required to reset match results.');
+  };
+
+  const handleApproveMatch = (matchId: string, notes?: string) => {
+    return new Promise<void>((resolve, reject) => {
+      requireAdminAuth(async () => {
+        try {
+          const approver = adminUser?.name || adminUser?.email?.split('@')[0] || 'Commissioner';
+          const now = new Date().toISOString();
+
+          let nextMatches: Match[] = [];
+          setTournamentState((prev) => {
+            nextMatches = prev.matches.map((m) => {
+              if (m.id === matchId) {
+                return {
+                  ...m,
+                  auditApproved: true,
+                  approvedBy: approver,
+                  approvedAt: now,
+                  approvalNotes: notes || m.approvalNotes,
+                };
+              }
+              return m;
+            });
+
+            const nextState: StoredState = {
+              ...prev,
+              matches: nextMatches,
+            };
+            saveTournamentState(nextState);
+            return nextState;
+          });
+
+          await batchUpdateMatchesInCloud(nextMatches);
+          resolve();
+        } catch (err) {
+          console.error('Failed to sync match approval to Firestore:', err);
+          reject(err);
+        }
+      }, 'Admin login is required to approve match results.');
+    });
+  };
+
+  const handleRevokeApproval = (matchId: string) => {
+    return new Promise<void>((resolve, reject) => {
+      requireAdminAuth(async () => {
+        try {
+          let nextMatches: Match[] = [];
+          setTournamentState((prev) => {
+            nextMatches = prev.matches.map((m) => {
+              if (m.id === matchId) {
+                return {
+                  ...m,
+                  auditApproved: false,
+                  approvedBy: undefined,
+                  approvedAt: undefined,
+                  approvalNotes: undefined,
+                };
+              }
+              return m;
+            });
+
+            const nextState: StoredState = {
+              ...prev,
+              matches: nextMatches,
+            };
+            saveTournamentState(nextState);
+            return nextState;
+          });
+
+          await batchUpdateMatchesInCloud(nextMatches);
+          resolve();
+        } catch (err) {
+          console.error('Failed to sync revoke approval to Firestore:', err);
+          reject(err);
+        }
+      }, 'Admin login is required to revoke approval.');
+    });
+  };
+
+  const handleBatchApproveMatches = (matchIds: string[]) => {
+    return new Promise<void>((resolve, reject) => {
+      requireAdminAuth(async () => {
+        try {
+          const idSet = new Set(matchIds);
+          const now = new Date().toISOString();
+          const approver = adminUser?.name || adminUser?.email?.split('@')[0] || 'Commissioner';
+
+          let nextMatches: Match[] = [];
+          setTournamentState((prev) => {
+            nextMatches = prev.matches.map((m) => {
+              if (idSet.has(m.id)) {
+                return {
+                  ...m,
+                  auditApproved: true,
+                  approvedBy: approver,
+                  approvedAt: now,
+                };
+              }
+              return m;
+            });
+
+            const nextState: StoredState = {
+              ...prev,
+              matches: nextMatches,
+            };
+            saveTournamentState(nextState);
+            return nextState;
+          });
+
+          // Single atomic batch update across all matches in Firestore
+          await batchUpdateMatchesInCloud(nextMatches);
+          resolve();
+        } catch (err) {
+          console.error('Failed to batch sync match approvals to Firestore:', err);
+          reject(err);
+        }
+      }, 'Admin login is required to batch approve match results.');
+    });
   };
 
   const handleOpenSubmitForMatch = (match: Match | null) => {
@@ -390,6 +551,19 @@ export default function App() {
           />
         )}
 
+        {/* MANAGER LOG & BACKLOG TAB */}
+        {activeTab === 'managerlog' && (
+          <ManagerLogView
+            matches={matches}
+            teams={teams}
+            config={config}
+            isAdmin={!!adminUser}
+            adminUser={adminUser}
+            onSelectTeam={(team) => handleOpenTeamDetail(team)}
+            onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
+          />
+        )}
+
         {/* TOURNAMENT RECORDS & STATS TAB (ANALYTICS HUB) */}
         {activeTab === 'records' && (
           <TournamentRecordsView
@@ -401,6 +575,28 @@ export default function App() {
             defenseStats={defenseStats}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
             onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
+          />
+        )}
+
+        {/* ADMIN MATCH SUBMISSION DASHBOARD TAB */}
+        {activeTab === 'admin' && adminUser && (
+          <AdminDashboardView
+            matches={matches}
+            teams={teams}
+            config={config}
+            adminUser={adminUser}
+            onOpenLoginModal={() =>
+              handleOpenLoginModal('Admin authentication is required to modify tournament match submissions.')
+            }
+            onEditMatch={handleOpenSubmitForMatch}
+            onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
+            onSelectTeam={(team) => handleOpenTeamDetail(team)}
+            onResetMatchScore={handleResetMatchScore}
+            onOpenSubmitModal={() => handleOpenSubmitForMatch(null)}
+            onApproveMatch={handleApproveMatch}
+            onRevokeApproval={handleRevokeApproval}
+            onBatchApproveMatches={handleBatchApproveMatches}
+            onNavigateToManagerLog={() => setActiveTab('managerlog')}
           />
         )}
       </main>

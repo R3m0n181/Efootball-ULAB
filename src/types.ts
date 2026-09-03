@@ -31,10 +31,16 @@ export interface Match {
   awayScore: number | null;
   status: MatchStatus;
   playedAt?: string; // ISO string
+  submittedAt?: string; // ISO string when result was submitted
+  matchDate?: string; // Legacy/fallback date string
   goals?: GoalEvent[];
   notes?: string;
   screenshotUrl?: string;
   submittedBy?: string;
+  auditApproved?: boolean;
+  approvedBy?: string;
+  approvedAt?: string;
+  approvalNotes?: string;
 }
 
 export interface StandingsRow {

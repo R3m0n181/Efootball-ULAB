@@ -10,6 +10,7 @@ import {
   Unlock,
   LogOut,
   UserCheck,
+  Users,
   Sparkles,
   TrendingUp,
   ChevronDown,
@@ -21,8 +22,8 @@ import { AdminUser } from '../utils/auth';
 import { LEAGUE_LOGO } from '../assets/leagueLogo';
 
 interface HeaderProps {
-  activeTab: 'standings' | 'fixtures' | 'teams' | 'records';
-  setActiveTab: (tab: 'standings' | 'fixtures' | 'teams' | 'records') => void;
+  activeTab: 'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin';
+  setActiveTab: (tab: 'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin') => void;
   config: TournamentConfig;
   totalMatches: number;
   completedMatches: number;
@@ -525,6 +526,35 @@ export const Header: React.FC<HeaderProps> = ({
               <Shield className="w-3.5 h-3.5" />
               <span>Clubs &amp; Teams</span>
             </button>
+
+            <button
+              id="tab-managerlog"
+              onClick={() => setActiveTab('managerlog')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                activeTab === 'managerlog'
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              <span>Manager Log</span>
+            </button>
+
+            {adminUser && (
+              <button
+                id="tab-admin"
+                onClick={() => setActiveTab('admin')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+                  activeTab === 'admin'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm shadow-emerald-950/50'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#0f1219]'
+                }`}
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Admin Hub</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              </button>
+            )}
           </div>
 
           {/* Highlighted divider line UNDER the tab selection */}

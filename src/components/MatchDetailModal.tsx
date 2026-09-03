@@ -326,6 +326,29 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </span>
                     )}
                   </p>
+
+                  {/* Commissioner Audit Approval Badge */}
+                  {match.auditApproved && (
+                    <div className="mt-2.5 pt-2 border-t border-slate-800/60 flex items-center justify-between flex-wrap gap-1.5 text-xs bg-emerald-950/30 px-2.5 py-1.5 rounded-lg border border-emerald-500/25 text-left">
+                      <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                        <span>Commissioner Certified</span>
+                        {match.approvedBy && (
+                          <span className="text-emerald-300/80 font-normal">by @{match.approvedBy}</span>
+                        )}
+                      </div>
+                      {match.approvedAt && (
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(match.approvedAt).toLocaleDateString()}
+                        </span>
+                      )}
+                      {match.approvalNotes && (
+                        <p className="w-full text-[11px] text-slate-300 italic pt-0.5">
+                          "{match.approvalNotes}"
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

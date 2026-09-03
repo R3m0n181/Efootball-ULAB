@@ -44,22 +44,41 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   onEditMatch,
   onViewMatchDetail,
 }) => {
-  if (!isOpen || !team) return null;
+  const [showRecordsSection, setShowRecordsSection] = useState(false);
 
-  const teamMap = new Map<string, Team>();
-  teams.forEach((t) => teamMap.set(t.id, t));
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, onClose]);
+
+  const teamMap = useMemo(() => {
+    const map = new Map<string, Team>();
+    teams.forEach((t) => map.set(t.id, t));
+    return map;
+  }, [teams]);
 
   // Matches for this team
   const teamMatches = useMemo(() => {
+    if (!team) return [];
     return matches
       .filter((m) => m.homeTeamId === team.id || m.awayTeamId === team.id)
       .sort((a, b) => a.round - b.round);
-  }, [matches, team.id]);
+  }, [matches, team?.id]);
 
   // Unified 42-round schedule with matches & bye/rest matchdays in chronological order
   const effectiveTotalRounds = totalRounds || 42;
 
   const scheduleItems = useMemo(() => {
+    if (!team) return [];
     const items: Array<
       | { type: 'match'; round: number; match: Match }
       | { type: 'bye'; round: number; isFirstLeg: boolean; isRoundFinished: boolean }
@@ -89,7 +108,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
     }
 
     return items;
-  }, [matches, team.id, effectiveTotalRounds]);
+  }, [matches, team?.id, effectiveTotalRounds]);
 
   const byeRounds = useMemo(() => {
     return scheduleItems
@@ -97,24 +116,9 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
       .map((item) => item.round);
   }, [scheduleItems]);
 
-  const [showRecordsSection, setShowRecordsSection] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    if (isOpen) {
-      window.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen, onClose]);
-
   // Club-specific stats across all 5 categories
   const clubStats = useMemo(() => {
+    if (!team) return null;
     const completed = teamMatches.filter(
       (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
     );
@@ -247,7 +251,9 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
       highestScoring,
       maxPointsCeiling,
     };
-  }, [teamMatches, team.id, teamMap, teams]);
+  }, [teamMatches, team?.id, teamMap, teams]);
+
+  if (!isOpen || !team || !clubStats) return null;
 
   return (
     <div

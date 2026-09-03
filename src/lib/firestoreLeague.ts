@@ -221,6 +221,33 @@ export async function updateMatchInCloud(
 }
 
 /**
+ * Updates the entire matches list in Firestore in a single atomic setDoc call
+ */
+export async function batchUpdateMatchesInCloud(
+  allMatches: Match[]
+): Promise<void> {
+  if (!db || !isFirebaseConfigured) return;
+
+  const strippedMatches = stripScreenshotsFromMatches(allMatches);
+
+  try {
+    const docRef = doc(db, TOURNAMENT_COLLECTION, TOURNAMENT_DOC_ID);
+    const cleanPayload = sanitizeForFirestore({
+      matches: strippedMatches,
+      updatedAt: new Date().toISOString(),
+    });
+    await setDoc(docRef, cleanPayload, { merge: true });
+  } catch (err) {
+    console.warn('Firestore batchUpdateMatchesInCloud error:', err);
+    try {
+      handleFirestoreError(err, OperationType.UPDATE, TOURNAMENT_PATH);
+    } catch {
+      // Allow caller to proceed with local state
+    }
+  }
+}
+
+/**
  * Updates match screenshot in Firestore dedicated proof collection
  */
 export async function updateMatchScreenshotInCloud(
