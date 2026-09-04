@@ -37,6 +37,22 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
   const [expandedRound, setExpandedRound] = useState<number | null>(null);
   const [copiedLaggingText, setCopiedLaggingText] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'active' | 'unstarted'>('all');
+  const [pendingOpenMap, setPendingOpenMap] = useState<Record<number, boolean>>({});
+  const [finishedOpenMap, setFinishedOpenMap] = useState<Record<number, boolean>>({});
+
+  const togglePending = (roundNum: number) => {
+    setPendingOpenMap((prev) => {
+      const current = prev[roundNum] !== undefined ? prev[roundNum] : true;
+      return { ...prev, [roundNum]: !current };
+    });
+  };
+
+  const toggleFinished = (roundNum: number, defaultOpen: boolean) => {
+    setFinishedOpenMap((prev) => {
+      const current = prev[roundNum] !== undefined ? prev[roundNum] : defaultOpen;
+      return { ...prev, [roundNum]: !current };
+    });
+  };
 
   const teamMap = useMemo(() => {
     const map = new Map<string, Team>();
@@ -97,10 +113,23 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
       }
     });
 
-    const list = Array.from(roundsMap.values()).map((r) => ({
-      ...r,
-      percent: r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0,
-    }));
+    const list = Array.from(roundsMap.values()).map((r) => {
+      // Sort matches so pending matches appear first, then finished matches
+      const sortedMatches = [...r.matches].sort((a, b) => {
+        const aDone = a.status === 'completed' && a.homeScore !== null && a.awayScore !== null;
+        const bDone = b.status === 'completed' && b.homeScore !== null && b.awayScore !== null;
+        if (aDone !== bDone) {
+          return aDone ? 1 : -1; // Pending (false) first, completed (true) last
+        }
+        return (a.matchNumber || 0) - (b.matchNumber || 0);
+      });
+
+      return {
+        ...r,
+        matches: sortedMatches,
+        percent: r.total > 0 ? Math.round((r.completed / r.total) * 100) : 0,
+      };
+    });
 
     list.sort((a, b) => a.round - b.round);
     return list;
@@ -468,86 +497,184 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                 </div>
 
                 {/* Expanded Details: List of all matches in this round */}
-                {isExpanded && (
-                  <div className="px-3 sm:px-4 pb-4 pt-1 bg-[#0a0d14] border-t border-slate-800/60">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-2">
-                      {r.matches.map((m) => {
-                        const home = teamMap.get(m.homeTeamId);
-                        const away = teamMap.get(m.awayTeamId);
-                        const isDone = m.status === 'completed' && m.homeScore !== null;
+                {isExpanded && (() => {
+                  const pendingMatches = r.matches.filter(
+                    (m) => m.status !== 'completed' || m.homeScore === null || m.awayScore === null
+                  );
+                  const finishedMatches = r.matches.filter(
+                    (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+                  );
 
-                        return (
-                          <div
-                            key={m.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onViewMatchDetail?.(m);
-                            }}
-                            className="p-3 rounded-xl bg-[#111420] border border-slate-800 hover:border-slate-700 hover:bg-[#141828] transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs group"
-                          >
-                            <div className="flex items-center justify-between gap-2 min-w-0 flex-1">
-                              {/* Home */}
-                              <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <TeamLogo team={home} size="xs" />
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-200 block truncate group-hover:text-white">
-                                    {home?.clubName || 'Home'}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 block truncate">
-                                    @{home?.managerName || 'TBD'}
-                                  </span>
-                                </div>
-                              </div>
+                  const renderMatchItem = (m: Match, isDone: boolean) => {
+                    const home = teamMap.get(m.homeTeamId);
+                    const away = teamMap.get(m.awayTeamId);
 
-                              {/* Center Score / VS */}
-                              <div className="shrink-0 px-2.5 py-1 rounded-lg font-mono font-bold text-xs text-center min-w-[54px] bg-[#0c0f17] border border-slate-800/90 shadow-inner">
-                                {isDone ? (
-                                  <span className="text-emerald-400">
-                                    {m.homeScore} - {m.awayScore}
-                                  </span>
-                                ) : (
-                                  <span className="text-slate-500 font-sans text-[11px]">vs</span>
-                                )}
-                              </div>
-
-                              {/* Away */}
-                              <div className="flex items-center justify-end gap-2 min-w-0 flex-1 text-right">
-                                <div className="min-w-0">
-                                  <span className="font-bold text-slate-200 block truncate group-hover:text-white">
-                                    {away?.clubName || 'Away'}
-                                  </span>
-                                  <span className="text-[10px] text-slate-400 block truncate">
-                                    @{away?.managerName || 'TBD'}
-                                  </span>
-                                </div>
-                                <TeamLogo team={away} size="xs" />
-                              </div>
-                            </div>
-
-                            {/* Footer / Meta on mobile, inline status on desktop */}
-                            <div className="flex items-center justify-between sm:justify-end gap-2 border-t sm:border-t-0 border-slate-800/60 pt-2 sm:pt-0">
-                              <span className="text-[10px] text-slate-500 sm:hidden">
-                                {isDone ? 'Finished' : 'Upcoming'}
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onViewMatchDetail?.(m);
+                        }}
+                        className={`p-3 rounded-xl border transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs group ${
+                          isDone
+                            ? 'bg-[#111420] border-slate-800/80 hover:border-slate-700 hover:bg-[#141828]'
+                            : 'bg-[#14120e] border-amber-500/25 hover:border-amber-500/45 hover:bg-[#1a1610]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 min-w-0 flex-1">
+                          {/* Home */}
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <TeamLogo team={home} size="xs" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-200 block truncate group-hover:text-white">
+                                {home?.clubName || 'Home'}
                               </span>
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                                    isDone
-                                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                                      : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                                  }`}
-                                >
-                                  {isDone ? 'Completed' : 'Pending'}
-                                </span>
-                                <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 sm:hidden" />
-                              </div>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                @{home?.managerName || 'TBD'}
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
+
+                          {/* Center Score / VS */}
+                          <div
+                            className={`shrink-0 px-2.5 py-1 rounded-lg font-mono font-bold text-xs text-center min-w-[54px] shadow-inner border ${
+                              isDone
+                                ? 'bg-[#0c0f17] border-slate-800/90 text-emerald-400'
+                                : 'bg-amber-950/40 border-amber-800/40 text-amber-300'
+                            }`}
+                          >
+                            {isDone ? (
+                              <span>
+                                {m.homeScore} - {m.awayScore}
+                              </span>
+                            ) : (
+                              <span className="font-sans text-[11px] font-bold text-amber-400">vs</span>
+                            )}
+                          </div>
+
+                          {/* Away */}
+                          <div className="flex items-center justify-end gap-2 min-w-0 flex-1 text-right">
+                            <div className="min-w-0">
+                              <span className="font-bold text-slate-200 block truncate group-hover:text-white">
+                                {away?.clubName || 'Away'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                @{away?.managerName || 'TBD'}
+                              </span>
+                            </div>
+                            <TeamLogo team={away} size="xs" />
+                          </div>
+                        </div>
+
+                        {/* Footer / Meta on mobile, inline status on desktop */}
+                        <div className="flex items-center justify-between sm:justify-end gap-2 border-t sm:border-t-0 border-slate-800/60 pt-2 sm:pt-0">
+                          <span className="text-[10px] text-slate-500 sm:hidden">
+                            {isDone ? 'Finished' : 'Upcoming'}
+                          </span>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                isDone
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                              }`}
+                            >
+                              {isDone ? 'Completed' : 'Pending'}
+                            </span>
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 sm:hidden" />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  };
+
+                  const isPendingOpen =
+                    pendingOpenMap[r.round] !== undefined ? pendingOpenMap[r.round] : true;
+                  const defaultFinishedOpen = pendingMatches.length === 0;
+                  const isFinishedOpen =
+                    finishedOpenMap[r.round] !== undefined
+                      ? finishedOpenMap[r.round]
+                      : defaultFinishedOpen;
+
+                  return (
+                    <div className="px-3 sm:px-4 pb-4 pt-2.5 bg-[#0a0d14] border-t border-slate-800/60 space-y-3">
+                      {/* 1. Pending Matches Section (Collapsible, open by default) */}
+                      {pendingMatches.length > 0 && (
+                        <div className="rounded-xl border border-amber-500/25 bg-[#14110b]/70 overflow-hidden shadow-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePending(r.round);
+                            }}
+                            className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-amber-500/10 active:bg-amber-500/15 transition cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              {isPendingOpen ? (
+                                <ChevronDown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              )}
+                              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                              <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                                Pending Fixtures ({pendingMatches.length})
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                              {isPendingOpen ? 'Collapse' : 'Expand'}
+                            </span>
+                          </button>
+
+                          {isPendingOpen && (
+                            <div className="p-2.5 sm:p-3 pt-1 border-t border-amber-500/15">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                {pendingMatches.map((m) => renderMatchItem(m, false))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 2. Finished Matches Section (Collapsible, closed by default unless 100% completed) */}
+                      {finishedMatches.length > 0 && (
+                        <div className="rounded-xl border border-emerald-500/20 bg-[#0a120f]/60 overflow-hidden shadow-xs">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFinished(r.round, defaultFinishedOpen);
+                            }}
+                            className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-emerald-500/10 active:bg-emerald-500/15 transition cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              {isFinishedOpen ? (
+                                <ChevronDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              )}
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="text-xs font-bold text-emerald-300 uppercase tracking-wider">
+                                Finished Matches ({finishedMatches.length})
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              {isFinishedOpen ? 'Collapse' : 'Expand'}
+                            </span>
+                          </button>
+
+                          {isFinishedOpen && (
+                            <div className="p-2.5 sm:p-3 pt-1 border-t border-emerald-500/15">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                {finishedMatches.map((m) => renderMatchItem(m, true))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}
