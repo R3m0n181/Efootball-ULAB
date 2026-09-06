@@ -38,6 +38,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   const [pointsWin, setPointsWin] = useState(config.pointsForWin);
   const [pointsDraw, setPointsDraw] = useState(config.pointsForDraw);
   const [pointsLoss, setPointsLoss] = useState(config.pointsForLoss);
+  const [currentRound, setCurrentRound] = useState(config.currentRound || 1);
 
   const [importText, setImportText] = useState('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -45,11 +46,14 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   if (!isOpen) return null;
 
   const handleSave = () => {
+    const totalRounds = config.totalRounds || 42;
+    const boundedRound = Math.max(1, Math.min(Number(currentRound) || 1, totalRounds));
     onSaveConfig({
       ...config,
       name,
       season,
       format,
+      currentRound: boundedRound,
       pointsForWin: Number(pointsWin),
       pointsForDraw: Number(pointsDraw),
       pointsForLoss: Number(pointsLoss),
@@ -153,6 +157,40 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   <span>Matches per Club: <strong className="text-white font-mono">40 Matches</strong></span>
                 </div>
+              </div>
+            </div>
+
+            {/* Active Matchday Controller */}
+            <div className="p-3 bg-[#141824] border border-amber-500/30 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-white block">Active Matchday (Current Round)</span>
+                  <span className="text-[11px] text-slate-400">Controls which matchdays are actively being played and counted in Manager Log backlog calculations</span>
+                </div>
+                <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono font-black text-xs">
+                  MD {currentRound}
+                </span>
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  type="range"
+                  min={1}
+                  max={config.totalRounds || 42}
+                  value={currentRound}
+                  onChange={(e) => setCurrentRound(Number(e.target.value))}
+                  className="flex-1 accent-amber-500 cursor-pointer"
+                />
+                <select
+                  value={currentRound}
+                  onChange={(e) => setCurrentRound(Number(e.target.value))}
+                  className="bg-[#0a0c10] border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-amber-300 font-mono font-bold focus:outline-hidden focus:border-amber-500 cursor-pointer"
+                >
+                  {Array.from({ length: config.totalRounds || 42 }, (_, i) => i + 1).map((r) => (
+                    <option key={r} value={r}>
+                      Matchday {r}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>

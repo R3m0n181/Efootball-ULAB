@@ -481,6 +481,14 @@ export default function App() {
     }
   };
 
+  const handleUpdateCurrentRound = async (round: number) => {
+    const updatedConfig: TournamentConfig = {
+      ...config,
+      currentRound: round,
+    };
+    await handleSaveConfig(updatedConfig);
+  };
+
   const selectedTeamStandingsRow = selectedTeamForDetail
     ? standings.find((s) => s.team.id === selectedTeamForDetail.id) || null
     : null;
@@ -561,6 +569,7 @@ export default function App() {
             adminUser={adminUser}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
             onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
+            onUpdateCurrentRound={handleUpdateCurrentRound}
           />
         )}
 

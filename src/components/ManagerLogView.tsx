@@ -32,6 +32,7 @@ export interface ManagerLogViewProps {
   getProofForMatch?: (match: Match) => string | null;
   onSelectTeam?: (team: Team) => void;
   onViewMatchDetail?: (match: Match) => void;
+  onUpdateCurrentRound?: (round: number) => void;
 }
 
 export interface BacklogWarning {
@@ -84,7 +85,12 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   getProofForMatch,
   onSelectTeam,
   onViewMatchDetail,
+  onUpdateCurrentRound,
 }) => {
+  // Active matchday defined by tournament config (e.g. MD 14)
+  const totalRounds = config.totalRounds || (teams.length > 1 ? (teams.length - 1) * 2 : 42);
+  const activeMatchday = config.currentRound && config.currentRound > 0 ? config.currentRound : 1;
+
   // State for My Club selection (persisted in localStorage)
   const [myClubId, setMyClubId] = useState<string>(() => {
     try {
@@ -145,7 +151,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     return map;
   }, [teams]);
 
-  // Group matches by round to identify partially played matchdays
+  // Group matches by round to identify partially played matchdays up to activeMatchday
   const roundData = useMemo(() => {
     const map = new Map<number, { total: number; completed: number; matches: Match[] }>();
     matches.forEach((m) => {
@@ -161,32 +167,33 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       }
     });
 
+    const activeScopeRounds = Array.from(map.entries())
+      .filter(([round]) => round <= activeMatchday)
+      .map(([round]) => round)
+      .sort((a, b) => a - b);
+
     const partiallyPlayedRounds = Array.from(map.entries())
-      .filter(([_, data]) => data.completed > 0 && data.completed < data.total)
+      .filter(([round, data]) => round <= activeMatchday && data.completed > 0 && data.completed < data.total)
       .map(([round]) => round)
       .sort((a, b) => a - b);
 
     const fullyCompletedRounds = Array.from(map.entries())
-      .filter(([_, data]) => data.completed === data.total && data.total > 0)
+      .filter(([round, data]) => round <= activeMatchday && data.completed === data.total && data.total > 0)
       .map(([round]) => round)
       .sort((a, b) => a - b);
 
-    return { roundMap: map, partiallyPlayedRounds, fullyCompletedRounds };
-  }, [matches]);
+    return { roundMap: map, activeScopeRounds, partiallyPlayedRounds, fullyCompletedRounds };
+  }, [matches, activeMatchday]);
 
-  // Calculate manager statistics based ONLY on active partially played matchdays
+  // Calculate manager statistics based ONLY on matchdays up to activeMatchday
   const managerStats = useMemo(() => {
-    const { partiallyPlayedRounds } = roundData;
-
     const list = teams.map((team) => {
       const allTeamMatches = matches.filter(
         (m) => m.homeTeamId === team.id || m.awayTeamId === team.id
       );
 
-      // Matches in partially played rounds
-      const activeRoundMatches = allTeamMatches.filter((m) =>
-        partiallyPlayedRounds.includes(m.round)
-      );
+      // Matches in rounds up to the active matchday
+      const activeRoundMatches = allTeamMatches.filter((m) => m.round <= activeMatchday);
 
       const completedInActive = activeRoundMatches.filter(
         (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
@@ -229,11 +236,11 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
         a.team.clubName.localeCompare(b.team.clubName)
     );
     return list;
-  }, [teams, matches, roundData, resolveProof]);
+  }, [teams, matches, activeMatchday, resolveProof]);
 
   // Summary statistics
   const summary = useMemo(() => {
-    const { partiallyPlayedRounds } = roundData;
+    const { partiallyPlayedRounds, activeScopeRounds } = roundData;
     const sortedByLagging = [...managerStats].sort(
       (a, b) => b.pendingCount - a.pendingCount || a.completionRate - b.completionRate
     );
@@ -262,6 +269,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       managersWithBacklog,
       managersOnSchedule,
       leaguePacingRate,
+      activeScopeRounds,
       partiallyPlayedRounds,
       moderateBacklogCount,
       highBacklogCount,
@@ -334,14 +342,10 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   // Admin Broadcast Nudge
   const handleCopyLeagueNudgeList = () => {
     const laggingManagers = managerStats.filter((m) => m.pendingCount > 0);
-    const { partiallyPlayedRounds } = roundData;
 
     const lines = [
-      `📋 *${config.name} — Commissioner Backlog Notice* 📋`,
-      partiallyPlayedRounds.length > 0
-        ? `Active Matchdays in Progress: ${partiallyPlayedRounds.map((r) => `Round ${r}`).join(', ')}`
-        : `All active matchdays are up to date!`,
-      `The following managers have pending fixtures holding up partially played matchdays:`,
+      `📋 *${config.name} — Commissioner Backlog Notice (Matchdays 1 to ${activeMatchday})* 📋`,
+      `The following managers have pending fixtures holding up matchdays up to MD ${activeMatchday}:`,
       '',
       ...(laggingManagers.length > 0
         ? laggingManagers.map((m, idx) => {
@@ -354,7 +358,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
 
             return `${idx + 1}. *${m.team.clubName}* (@${m.team.managerName}) — ${m.pendingCount} pending [${opponents}]`;
           })
-        : ['✨ No managers are currently backlogged! All active matchdays are completed.']),
+        : [`✨ No managers are currently backlogged! All fixtures through MD ${activeMatchday} are 100% completed.`]),
       '',
       '⚡ Please coordinate with your opponents to play and submit match results with screenshots.',
     ];
@@ -375,7 +379,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       })
       .join('\n');
 
-    const message = `📢 *Commissioner Reminder for @${m.team.managerName} (${m.team.clubName})*:\nYou currently have ${m.pendingCount} pending match(es) in active matchdays:\n${opponents}\nPlease coordinate with your opponents to play as soon as possible! ⚽`;
+    const message = `📢 *Commissioner Reminder for @${m.team.managerName} (${m.team.clubName})*:\nYou currently have ${m.pendingCount} pending match(es) through Matchday ${activeMatchday}:\n${opponents}\nPlease coordinate with your opponents to play as soon as possible! ⚽`;
 
     navigator.clipboard.writeText(message);
     setCopiedSinglePing(m.team.id);
@@ -387,7 +391,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     if (!myClubStats) return;
 
     if (myClubStats.pendingMatches.length === 0) {
-      const text = `🎉 *${myClubStats.team.clubName}* (@${myClubStats.team.managerName}) is 100% caught up on all active matchdays in ${config.name}!`;
+      const text = `🎉 *${myClubStats.team.clubName}* (@${myClubStats.team.managerName}) is 100% caught up on all fixtures through Matchday ${activeMatchday} in ${config.name}!`;
       navigator.clipboard.writeText(text);
       setCopiedMySchedule(true);
       setTimeout(() => setCopiedMySchedule(false), 2500);
@@ -402,7 +406,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       })
       .join('\n');
 
-    const text = `⚽ *Match Coordination for ${myClubStats.team.clubName}* (@${myClubStats.team.managerName})\nReady to play active league fixtures:\n${opponentPings}\nPlease reply or DM me when you are available to play!`;
+    const text = `⚽ *Match Coordination for ${myClubStats.team.clubName}* (@${myClubStats.team.managerName})\nReady to play active league fixtures (Matchdays 1-${activeMatchday}):\n${opponentPings}\nPlease reply or DM me when you are available to play!`;
 
     navigator.clipboard.writeText(text);
     setCopiedMySchedule(true);
@@ -450,6 +454,26 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
 
           {/* Quick Action in Header */}
           <div className="flex items-center gap-2 self-start sm:self-center shrink-0 flex-wrap">
+            {/* Active Matchday Badge */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold">
+              <Calendar className="w-3.5 h-3.5 text-blue-400" />
+              <span>Active: <span className="text-white font-mono font-bold">MD {activeMatchday}</span></span>
+              {isAdmin && onUpdateCurrentRound && (
+                <select
+                  value={activeMatchday}
+                  onChange={(e) => onUpdateCurrentRound(Number(e.target.value))}
+                  className="ml-1 bg-[#141824] text-[11px] font-bold text-blue-300 border border-blue-500/40 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-400 cursor-pointer"
+                  title="Change active matchday"
+                >
+                  {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
+                    <option key={r} value={r}>
+                      MD {r}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             {/* Find My Club Trigger */}
             <div className="relative">
               <button
@@ -815,24 +839,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
           </>
         )}
       </div>
-
-      {/* Shortest Possible Mobile-First Warning Banner */}
-      {summary.partiallyPlayedRounds.length > 0 ? (
-        <div className="bg-amber-500/10 border border-amber-500/25 rounded-lg sm:rounded-xl px-2.5 py-2 sm:p-3 flex items-center gap-2 text-[11px] sm:text-xs text-amber-300">
-          <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-          <p className="leading-snug">
-            Backlog only counts unplayed matches in active rounds:{' '}
-            <span className="font-mono font-semibold text-white">
-              {summary.partiallyPlayedRounds.map((r) => `R${r}`).join(', ')}
-            </span>
-          </p>
-        </div>
-      ) : (
-        <div className="bg-emerald-500/10 border border-emerald-500/25 rounded-lg sm:rounded-xl px-2.5 py-2 sm:p-3 flex items-center gap-2 text-[11px] sm:text-xs text-emerald-300">
-          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-          <p className="leading-snug">All active rounds completed — 0 backlog.</p>
-        </div>
-      )}
 
       {/* Directory Table / List Container */}
       <div className="bg-[#0f1219] border border-slate-800 rounded-xl overflow-hidden shadow-xl">
