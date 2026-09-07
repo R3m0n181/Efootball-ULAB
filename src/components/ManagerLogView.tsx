@@ -36,7 +36,7 @@ export interface ManagerLogViewProps {
 }
 
 export interface BacklogWarning {
-  severity: 'moderate' | 'high' | 'critical';
+  severity: 'low' | 'moderate' | 'high' | 'critical';
   label: string;
   shortLabel: string;
   badgeClass: string;
@@ -44,31 +44,40 @@ export interface BacklogWarning {
 }
 
 export function getBacklogWarning(pendingCount: number): BacklogWarning | null {
-  if (pendingCount > 7) {
+  if (pendingCount > 5) {
     return {
       severity: 'critical',
-      label: 'Critical Backlog (>7)',
+      label: 'Critical Backlog (>5)',
       shortLabel: 'Critical',
       badgeClass: 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
       counterClass: 'bg-rose-500/20 text-rose-300 border border-rose-500/40',
     };
   }
-  if (pendingCount > 5) {
+  if (pendingCount > 3) {
     return {
       severity: 'high',
-      label: 'High Backlog (>5)',
+      label: 'High Backlog (>3)',
       shortLabel: 'High',
       badgeClass: 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
       counterClass: 'bg-orange-500/20 text-orange-300 border border-orange-500/40',
     };
   }
-  if (pendingCount > 3) {
+  if (pendingCount > 2) {
     return {
       severity: 'moderate',
-      label: 'Moderate Backlog (>3)',
+      label: 'Moderate Backlog (>2)',
       shortLabel: 'Moderate',
       badgeClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
       counterClass: 'bg-amber-500/20 text-amber-300 border border-amber-500/40',
+    };
+  }
+  if (pendingCount >= 1) {
+    return {
+      severity: 'low',
+      label: 'Minor Backlog (1-2)',
+      shortLabel: 'Minor',
+      badgeClass: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
+      counterClass: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
     };
   }
   return null;
@@ -107,7 +116,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'backlog-desc' | 'backlog-asc' | 'team-asc' | 'team-desc'>('backlog-desc');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'backlog' | 'moderate' | 'high' | 'critical' | 'completed'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'backlog' | 'low' | 'moderate' | 'high' | 'critical' | 'completed'>('all');
   const [isClubPickerOpen, setIsClubPickerOpen] = useState(false);
   const [clubPickerSearch, setClubPickerSearch] = useState('');
 
@@ -251,9 +260,10 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     const managersWithBacklog = managerStats.filter((m) => m.pendingCount > 0).length;
     const managersOnSchedule = managerStats.filter((m) => m.pendingCount === 0).length;
 
-    const moderateBacklogCount = managerStats.filter((m) => m.pendingCount > 3).length;
-    const highBacklogCount = managerStats.filter((m) => m.pendingCount > 5).length;
-    const criticalBacklogCount = managerStats.filter((m) => m.pendingCount > 7).length;
+    const lowBacklogCount = managerStats.filter((m) => m.pendingCount >= 1 && m.pendingCount <= 2).length;
+    const moderateBacklogCount = managerStats.filter((m) => m.pendingCount > 2).length;
+    const highBacklogCount = managerStats.filter((m) => m.pendingCount > 3).length;
+    const criticalBacklogCount = managerStats.filter((m) => m.pendingCount > 5).length;
 
     const totalActiveRoundsMatches = managerStats.reduce((acc, m) => acc + m.totalActiveMatches, 0) / 2;
     const totalActiveCompleted = managerStats.reduce((acc, m) => acc + m.completedActiveCount, 0) / 2;
@@ -271,6 +281,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       leaguePacingRate,
       activeScopeRounds,
       partiallyPlayedRounds,
+      lowBacklogCount,
       moderateBacklogCount,
       highBacklogCount,
       criticalBacklogCount,
@@ -290,12 +301,14 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     // Filter tabs
     if (activeFilter === 'backlog') {
       list = list.filter((m) => m.pendingCount > 0);
+    } else if (activeFilter === 'low') {
+      list = list.filter((m) => m.pendingCount >= 1 && m.pendingCount <= 2);
     } else if (activeFilter === 'moderate') {
-      list = list.filter((m) => m.pendingCount > 3);
+      list = list.filter((m) => m.pendingCount > 2);
     } else if (activeFilter === 'high') {
-      list = list.filter((m) => m.pendingCount > 5);
+      list = list.filter((m) => m.pendingCount > 3);
     } else if (activeFilter === 'critical') {
-      list = list.filter((m) => m.pendingCount > 7);
+      list = list.filter((m) => m.pendingCount > 5);
     } else if (activeFilter === 'completed') {
       list = list.filter((m) => m.pendingCount === 0);
     }
@@ -909,6 +922,19 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
             Pending Active ({summary.managersWithBacklog})
           </button>
 
+          {summary.lowBacklogCount > 0 && (
+            <button
+              onClick={() => setActiveFilter('low')}
+              className={`px-2.5 py-1 rounded-lg font-bold text-xs transition whitespace-nowrap cursor-pointer ${
+                activeFilter === 'low'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'text-blue-300 hover:bg-blue-500/10 border border-blue-500/30'
+              }`}
+            >
+              Minor 1-2 ({summary.lowBacklogCount})
+            </button>
+          )}
+
           {summary.moderateBacklogCount > 0 && (
             <button
               onClick={() => setActiveFilter('moderate')}
@@ -918,7 +944,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                   : 'text-amber-300 hover:bg-amber-500/10 border border-amber-500/30'
               }`}
             >
-              Moderate &gt;3 ({summary.moderateBacklogCount})
+              Moderate &gt;2 ({summary.moderateBacklogCount})
             </button>
           )}
 
@@ -931,7 +957,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                   : 'text-orange-300 hover:bg-orange-500/10 border border-orange-500/30'
               }`}
             >
-              High &gt;5 ({summary.highBacklogCount})
+              High &gt;3 ({summary.highBacklogCount})
             </button>
           )}
 
@@ -944,7 +970,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                   : 'text-rose-300 hover:bg-rose-500/10 border border-rose-500/30'
               }`}
             >
-              Critical &gt;7 ({summary.criticalBacklogCount})
+              Critical &gt;5 ({summary.criticalBacklogCount})
             </button>
           )}
 
@@ -1205,7 +1231,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
           <span className="font-semibold text-white text-[11px] block mb-2">
             Club Status & Warning Badges:
           </span>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[11px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2 text-[11px]">
             <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-slate-800">
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 whitespace-nowrap shrink-0">
                 Caught Up
@@ -1215,30 +1241,39 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
               </span>
             </div>
 
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-amber-500/20">
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap shrink-0">
-                Moderate (&gt;3)
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-blue-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 whitespace-nowrap shrink-0">
+                Minor (1-2)
               </span>
               <span className="text-slate-400 text-[11px] leading-tight">
-                <strong>4–5 pending:</strong> Schedule is beginning to lag; managers should coordinate games.
+                <strong>1–2 pending:</strong> Minor gap; easily completed in a quick session.
+              </span>
+            </div>
+
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-amber-500/20">
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 whitespace-nowrap shrink-0">
+                Moderate (&gt;2)
+              </span>
+              <span className="text-slate-400 text-[11px] leading-tight">
+                <strong>3 pending:</strong> Schedule is beginning to lag behind matchday pacing.
               </span>
             </div>
 
             <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-orange-500/20">
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-300 border border-orange-500/40 whitespace-nowrap shrink-0">
-                High (&gt;5)
+                High (&gt;3)
               </span>
               <span className="text-slate-400 text-[11px] leading-tight">
-                <strong>6–7 pending:</strong> Significant delay holding back matchday progressions.
+                <strong>4–5 pending:</strong> Significant delay holding back matchday progressions.
               </span>
             </div>
 
             <div className="flex items-start gap-2 p-2 rounded-lg bg-[#141824]/60 border border-rose-500/20">
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 whitespace-nowrap shrink-0">
-                Critical (&gt;7)
+                Critical (&gt;5)
               </span>
               <span className="text-slate-400 text-[11px] leading-tight">
-                <strong>8+ pending:</strong> Severe tournament bottleneck requiring commissioner intervention.
+                <strong>6+ pending:</strong> Severe tournament bottleneck requiring commissioner intervention.
               </span>
             </div>
           </div>
