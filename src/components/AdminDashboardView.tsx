@@ -27,6 +27,8 @@ import {
   CalendarRange,
   ArrowRight,
   Users,
+  FileText,
+  Share2,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -88,7 +90,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'round-asc' | 'round-desc' | 'goals-desc' | 'team-asc' | 'team-desc'>('recent');
   const [previewScreenshotUrl, setPreviewScreenshotUrl] = useState<{ url: string; matchTitle: string; score: string } | null>(null);
   const [copiedAuditText, setCopiedAuditText] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'ledger' | 'pacing' | 'fairplay' | 'reports'>('ledger');
+  const [adminSubTab, setAdminSubTab] = useState<'pacing' | 'ledger' | 'fairplay' | 'reports'>('pacing');
   const [proofsMap, setProofsMap] = useState<Map<string, string>>(() => new Map());
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -869,6 +871,19 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {/* Commissioner Navigation Sub-Tabs */}
       <div className="flex items-center gap-1.5 p-1 bg-[#0a0c10] border border-slate-800 rounded-xl overflow-x-auto no-scrollbar shadow-md">
         <button
+          id="admin-subtab-pacing"
+          onClick={() => setAdminSubTab('pacing')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+            adminSubTab === 'pacing'
+              ? 'bg-emerald-500 text-slate-950 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Layers className="w-3.5 h-3.5" />
+          <span>Round Pacing &amp; Bottlenecks</span>
+        </button>
+
+        <button
           id="admin-subtab-ledger"
           onClick={() => setAdminSubTab('ledger')}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
@@ -882,19 +897,6 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-900/30 text-white font-mono">
             {completedCount}
           </span>
-        </button>
-
-        <button
-          id="admin-subtab-pacing"
-          onClick={() => setAdminSubTab('pacing')}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
-            adminSubTab === 'pacing'
-              ? 'bg-emerald-500 text-slate-950 shadow-sm'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
-          }`}
-        >
-          <Layers className="w-3.5 h-3.5" />
-          <span>Round Pacing &amp; Bottlenecks</span>
         </button>
 
         <button
@@ -929,7 +931,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         </button>
       </div>
 
-      {/* Tab 1: Submission Ledger */}
+      {/* Sub-Tab: Submission Ledger */}
       {adminSubTab === 'ledger' && (
         <div className="space-y-4">
           {/* Real-Life Activity Quick Bar */}
@@ -1719,49 +1721,283 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
             )}
           </div>
+
+          {/* Sub-Tab Footer Description: Submission Ledger */}
+          <div
+            id="guide-admin-ledger"
+            className="bg-[#0f1219] border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-sm space-y-3"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-400">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Submission Ledger &amp; Verification Guide
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Chronological audit feed, screenshot proof inspection, and score adjustment controls.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-center px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 text-[11px] font-mono">
+                Ledger Sub-Tab
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Proof Verification</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Inspect attached post-match screenshots in high definition to verify accurate scorelines, scorers, and penalty results.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Approval &amp; Revocation</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Lock verified submissions with commissioner approval stamps, batch-approve clean entries, or revoke approval if disputes arise.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-purple-400 font-semibold">
+                  <Edit3 className="w-3.5 h-3.5" />
+                  <span>Commissioner Score Edits</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Directly edit scores, goalscorers, assists, and real-life timestamps whenever corrections or manual overrides are needed.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Tab 2: Round Pacing & Bottlenecks */}
+      {/* Sub-Tab: Round Pacing & Bottlenecks */}
       {adminSubTab === 'pacing' && (
-        <AdminPacingTab
-          matches={matches}
-          teams={teams}
-          config={config}
-          onViewMatchDetail={onViewMatchDetail}
-          onSelectTeam={onSelectTeam}
-          onNavigateToManagerLog={onNavigateToManagerLog}
-        />
+        <div className="space-y-4">
+          <AdminPacingTab
+            matches={matches}
+            teams={teams}
+            config={config}
+            onViewMatchDetail={onViewMatchDetail}
+            onSelectTeam={onSelectTeam}
+            onNavigateToManagerLog={onNavigateToManagerLog}
+          />
+
+          {/* Sub-Tab Footer Description: Round Pacing */}
+          <div
+            id="guide-admin-pacing"
+            className="bg-[#0f1219] border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-sm space-y-3"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Round Pacing &amp; Bottleneck Diagnostics Guide
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Real-time matchday velocity tracking, completion benchmarks, and delay mitigation.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-center px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 text-[11px] font-mono">
+                Pacing Sub-Tab
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>Velocity &amp; Completion Rates</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Monitors played vs. remaining fixtures round-by-round to measure league throughput and identify when a matchday is nearing closure.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Bottleneck Diagnostics</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Highlights matchdays lagging below league velocity, flags specific unplayed games holding up round completion, and spots backlogged clubs.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-blue-400 font-semibold">
+                  <Calendar className="w-3.5 h-3.5" />
+                  <span>Matchday Synchronization</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Use the Admin Matchday Control bar at the top or quick-jump buttons to align the focal matchday with currently active fixtures.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Tab 3: Fair-Play & Outliers */}
+      {/* Sub-Tab: Fair-Play & Outliers */}
       {adminSubTab === 'fairplay' && (
-        <AdminFairPlayTab
-          matches={matches}
-          teams={teams}
-          config={config}
-          getProofForMatch={getProofForMatch}
-          onViewMatchDetail={onViewMatchDetail}
-          onPreviewProof={(url, title, score) =>
-            setPreviewScreenshotUrl({ url, matchTitle: title, score })
-          }
-          onEditMatch={onEditMatch}
-          onApproveMatch={onApproveMatch}
-          onRevokeApproval={onRevokeApproval}
-          onBatchApproveMatches={onBatchApproveMatches}
-          adminUser={adminUser}
-        />
+        <div className="space-y-4">
+          <AdminFairPlayTab
+            matches={matches}
+            teams={teams}
+            config={config}
+            getProofForMatch={getProofForMatch}
+            onViewMatchDetail={onViewMatchDetail}
+            onPreviewProof={(url, title, score) =>
+              setPreviewScreenshotUrl({ url, matchTitle: title, score })
+            }
+            onEditMatch={onEditMatch}
+            onApproveMatch={onApproveMatch}
+            onRevokeApproval={onRevokeApproval}
+            onBatchApproveMatches={onBatchApproveMatches}
+            adminUser={adminUser}
+          />
+
+          {/* Sub-Tab Footer Description: Fair-Play */}
+          <div
+            id="guide-admin-fairplay"
+            className="bg-[#0f1219] border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-sm space-y-3"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                  <ShieldAlert className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Fair-Play &amp; Outlier Monitoring Guide
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Integrity screening, blowout scoreline audits, and missing verification proof detection.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-center px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 text-[11px] font-mono">
+                Fair-Play Sub-Tab
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-amber-400 font-semibold">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>High Margin &amp; Blowout Audits</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Automatically flags results decided by 5+ goals or extreme scoring rates to verify legitimacy and maintain competitive balance.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-rose-400 font-semibold">
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Missing Proof Isolation</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Isolates completed fixtures submitted without screenshot proof so commissioners can verify authenticity before approving.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Integrity Enforcement</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Directly review flagged fixtures, inspect details, adjust stats, or revoke approval pending manager inquiries.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Tab 5: Storage Health & Commissioner Reports */}
+      {/* Sub-Tab: Storage Health & Commissioner Reports */}
       {adminSubTab === 'reports' && (
-        <AdminReportsTab
-          matches={matches}
-          teams={teams}
-          config={config}
-          proofsMap={proofsMap}
-          getProofForMatch={getProofForMatch}
-        />
+        <div className="space-y-4">
+          <AdminReportsTab
+            matches={matches}
+            teams={teams}
+            config={config}
+            proofsMap={proofsMap}
+            getProofForMatch={getProofForMatch}
+          />
+
+          {/* Sub-Tab Footer Description: Reports */}
+          <div
+            id="guide-admin-reports"
+            className="bg-[#0f1219] border border-slate-800/80 rounded-xl p-4 sm:p-5 shadow-sm space-y-3"
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                  <FileSpreadsheet className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Storage Health &amp; Reports Guide
+                  </h4>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Browser quota tracking, raw database archives, and formatted community announcements.
+                  </p>
+                </div>
+              </div>
+              <span className="self-start sm:self-center px-2.5 py-1 rounded-md bg-slate-800/80 text-slate-400 border border-slate-700/60 text-[11px] font-mono">
+                Reports Sub-Tab
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-purple-400 font-semibold">
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Community Broadcast Copies</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  One-click export of markdown standings tables and missing proof reports tailored for WhatsApp, Discord, or Telegram groups.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-cyan-400 font-semibold">
+                  <Activity className="w-3.5 h-3.5" />
+                  <span>Storage Quota Diagnostics</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Monitors local cache memory, screenshot footprint, and IndexedDB storage quotas to ensure zero risk of browser eviction.
+                </p>
+              </div>
+
+              <div className="bg-[#141824]/60 border border-slate-800/60 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Data Backups &amp; Portability</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Generate raw CSV and JSON archives for offline spreadsheet auditing, season recaps, and database restorations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Screenshot Lightbox Modal */}

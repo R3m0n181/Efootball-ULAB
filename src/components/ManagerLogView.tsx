@@ -3,7 +3,6 @@ import {
   Users,
   AlertTriangle,
   CheckCircle2,
-  Copy,
   Check,
   ChevronDown,
   ChevronRight,
@@ -110,9 +109,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   });
 
   // UI States
-  const [copiedNudge, setCopiedNudge] = useState(false);
   const [copiedMySchedule, setCopiedMySchedule] = useState(false);
-  const [copiedSinglePing, setCopiedSinglePing] = useState<string | null>(null);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'backlog-desc' | 'backlog-asc' | 'team-asc' | 'team-desc'>('backlog-desc');
@@ -352,53 +349,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     });
   }, [managerStats, activeFilter, searchTerm, sortBy]);
 
-  // Admin Broadcast Nudge
-  const handleCopyLeagueNudgeList = () => {
-    const laggingManagers = managerStats.filter((m) => m.pendingCount > 0);
-
-    const lines = [
-      `📋 *${config.name} — Commissioner Backlog Notice (Matchdays 1 to ${activeMatchday})* 📋`,
-      `The following managers have pending fixtures holding up matchdays up to MD ${activeMatchday}:`,
-      '',
-      ...(laggingManagers.length > 0
-        ? laggingManagers.map((m, idx) => {
-            const opponents = m.pendingMatches
-              .map((pm) => {
-                const oppId = pm.homeTeamId === m.team.id ? pm.awayTeamId : pm.homeTeamId;
-                return `${teamMap.get(oppId)?.clubName || 'Opponent'} (R${pm.round})`;
-              })
-              .join(', ');
-
-            return `${idx + 1}. *${m.team.clubName}* (@${m.team.managerName}) — ${m.pendingCount} pending [${opponents}]`;
-          })
-        : [`✨ No managers are currently backlogged! All fixtures through MD ${activeMatchday} are 100% completed.`]),
-      '',
-      '⚡ Please coordinate with your opponents to play and submit match results with screenshots.',
-    ];
-
-    navigator.clipboard.writeText(lines.join('\n'));
-    setCopiedNudge(true);
-    setTimeout(() => setCopiedNudge(false), 2500);
-  };
-
-  // Admin Single Manager Direct DM/Ping
-  const handleCopySingleManagerPing = (m: (typeof managerStats)[0], e: React.MouseEvent) => {
-    e.stopPropagation();
-    const opponents = m.pendingMatches
-      .map((pm) => {
-        const oppId = pm.homeTeamId === m.team.id ? pm.awayTeamId : pm.homeTeamId;
-        const opp = teamMap.get(oppId);
-        return `• Round ${pm.round}: vs ${opp?.clubName || 'Opponent'} (@${opp?.managerName || 'manager'})`;
-      })
-      .join('\n');
-
-    const message = `📢 *Commissioner Reminder for @${m.team.managerName} (${m.team.clubName})*:\nYou currently have ${m.pendingCount} pending match(es) through Matchday ${activeMatchday}:\n${opponents}\nPlease coordinate with your opponents to play as soon as possible! ⚽`;
-
-    navigator.clipboard.writeText(message);
-    setCopiedSinglePing(m.team.id);
-    setTimeout(() => setCopiedSinglePing(null), 2500);
-  };
-
   // Member "Copy My Match Schedule"
   const handleCopyMyMatchSchedule = () => {
     if (!myClubStats) return;
@@ -411,7 +361,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       return;
     }
 
-    const opponentPings = myClubStats.pendingMatches
+    const opponentFixtures = myClubStats.pendingMatches
       .map((pm) => {
         const oppId = pm.homeTeamId === myClubStats.team.id ? pm.awayTeamId : pm.homeTeamId;
         const opp = teamMap.get(oppId);
@@ -419,7 +369,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       })
       .join('\n');
 
-    const text = `⚽ *Match Coordination for ${myClubStats.team.clubName}* (@${myClubStats.team.managerName})\nReady to play active league fixtures (Matchdays 1-${activeMatchday}):\n${opponentPings}\nPlease reply or DM me when you are available to play!`;
+    const text = `⚽ *Match Coordination for ${myClubStats.team.clubName}* (@${myClubStats.team.managerName})\nReady to play active league fixtures (Matchdays 1-${activeMatchday}):\n${opponentFixtures}\nPlease reply or DM me when you are available to play!`;
 
     navigator.clipboard.writeText(text);
     setCopiedMySchedule(true);
@@ -599,28 +549,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                 </>
               )}
             </div>
-
-            {/* Admin Broadcast Button */}
-            {isAdmin && (
-              <button
-                id="btn-copy-league-nudge"
-                onClick={handleCopyLeagueNudgeList}
-                className="px-3 py-1.5 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
-                title="Copy entire league backlog list formatted for WhatsApp or Discord"
-              >
-                {copiedNudge ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>Nudge List Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copy Nudge List</span>
-                  </>
-                )}
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -1108,27 +1036,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                         />
                       </div>
                     </div>
-
-                    {/* Admin Ping Button */}
-                    {isAdmin && m.pendingCount > 0 && (
-                      <button
-                        onClick={(e) => handleCopySingleManagerPing(m, e)}
-                        className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-                        title="Copy direct reminder message for this manager"
-                      >
-                        {copiedSinglePing === m.team.id ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Ping Copied!</span>
-                          </>
-                        ) : (
-                          <>
-                            <MessageCircle className="w-3 h-3" />
-                            <span>Ping</span>
-                          </>
-                        )}
-                      </button>
-                    )}
 
                     {/* Status Badge */}
                     <div className="flex items-center gap-2">
