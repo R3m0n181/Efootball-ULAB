@@ -58,6 +58,8 @@ interface AdminDashboardViewProps {
   onRevokeApproval?: (matchId: string) => Promise<void> | void;
   onBatchApproveMatches?: (matchIds: string[]) => Promise<void> | void;
   onNavigateToManagerLog?: () => void;
+  onUpdateCurrentRound?: (round: number) => void;
+  onNavigateToFixtures?: (round?: number) => void;
 }
 
 export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
@@ -74,6 +76,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onRevokeApproval,
   onBatchApproveMatches,
   onNavigateToManagerLog,
+  onUpdateCurrentRound,
+  onNavigateToFixtures,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<string>('all');
@@ -454,8 +458,163 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     };
   }, [matches, teamMap]);
 
+  // Tournament Total Rounds & Active Matchday
+  const totalRounds = config.totalRounds || (teams.length > 1 ? (teams.length - 1) * 2 : 42);
+
+  // Compute earliest incomplete matchday
+  const earliestIncompleteRound = useMemo(() => {
+    for (let r = 1; r <= totalRounds; r++) {
+      const roundMatches = matches.filter((m) => m.round === r);
+      if (roundMatches.length > 0 && roundMatches.some((m) => m.status !== 'completed')) {
+        return r;
+      }
+    }
+    return 1;
+  }, [matches, totalRounds]);
+
+  const activeMatchday = config.currentRound && config.currentRound > 0 ? config.currentRound : earliestIncompleteRound;
+
+  // Active matchday fixtures statistics
+  const activeRoundMatches = useMemo(() => {
+    return matches.filter((m) => m.round === activeMatchday);
+  }, [matches, activeMatchday]);
+
+  const activeRoundCompletedCount = activeRoundMatches.filter((m) => m.status === 'completed').length;
+  const activeRoundTotalCount = activeRoundMatches.length;
+  const activeRoundProgress = activeRoundTotalCount > 0
+    ? Math.round((activeRoundCompletedCount / activeRoundTotalCount) * 100)
+    : 0;
+
+  // All rounds status overview for the select dropdown
+  const roundStatusOptions = useMemo(() => {
+    return Array.from({ length: totalRounds }, (_, i) => {
+      const r = i + 1;
+      const rMatches = matches.filter((m) => m.round === r);
+      const rCompleted = rMatches.filter((m) => m.status === 'completed').length;
+      const rTotal = rMatches.length;
+      let statusLabel = 'Scheduled';
+      if (rTotal > 0 && rCompleted === rTotal) {
+        statusLabel = 'Completed';
+      } else if (rCompleted > 0) {
+        statusLabel = `In Progress (${rCompleted}/${rTotal})`;
+      }
+      return {
+        round: r,
+        total: rTotal,
+        completed: rCompleted,
+        statusLabel,
+      };
+    });
+  }, [matches, totalRounds]);
+
   return (
     <div className="space-y-4">
+      {/* ADMIN MATCHDAY CONTROL (PLACED EXCLUSIVELY AT TOP OF ADMIN HUB) */}
+      <div
+        id="admin-matchday-control-panel"
+        className="bg-gradient-to-r from-[#0d1222] via-[#10172c] to-[#0d1222] border border-blue-500/40 rounded-xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden"
+      >
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
+          {/* Left: Info & Context */}
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 shrink-0">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 font-mono">
+                  Admin League Matchday Control
+                </span>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/50 text-xs font-mono font-black shadow-sm">
+                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                  Active: MD {activeMatchday}
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">
+                  ({activeRoundCompletedCount}/{activeRoundTotalCount} fixtures completed • {activeRoundProgress}%)
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Central tournament matchday setting — determines focal round in Manager Log, manager deadlines, and default Fixtures view.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Interactive Matchday Controls */}
+          <div className="flex items-center gap-2 flex-wrap shrink-0">
+            {/* Stepper Previous Round */}
+            <button
+              id="btn-admin-prev-matchday"
+              type="button"
+              disabled={activeMatchday <= 1 || !onUpdateCurrentRound}
+              onClick={() => onUpdateCurrentRound?.(Math.max(1, activeMatchday - 1))}
+              className="px-2.5 py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+              title="Switch to previous matchday"
+            >
+              <span>← MD{Math.max(1, activeMatchday - 1)}</span>
+            </button>
+
+            {/* Dropdown Selector */}
+            <div className="relative flex items-center">
+              <select
+                id="select-admin-active-matchday"
+                value={activeMatchday}
+                onChange={(e) => onUpdateCurrentRound?.(Number(e.target.value))}
+                disabled={!onUpdateCurrentRound}
+                className="bg-[#141a2e] text-white text-xs font-mono font-bold border border-blue-500/50 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer shadow-inner"
+                title="Select active tournament matchday"
+              >
+                {roundStatusOptions.map((opt) => (
+                  <option key={opt.round} value={opt.round}>
+                    MD {opt.round} — {opt.statusLabel}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Stepper Next Round */}
+            <button
+              id="btn-admin-next-matchday"
+              type="button"
+              disabled={activeMatchday >= totalRounds || !onUpdateCurrentRound}
+              onClick={() => onUpdateCurrentRound?.(Math.min(totalRounds, activeMatchday + 1))}
+              className="px-2.5 py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
+              title="Switch to next matchday"
+            >
+              <span>MD{Math.min(totalRounds, activeMatchday + 1)} →</span>
+            </button>
+
+            {/* Fast Sync to Earliest Incomplete */}
+            {activeMatchday !== earliestIncompleteRound && onUpdateCurrentRound && (
+              <button
+                id="btn-admin-sync-incomplete-round"
+                type="button"
+                onClick={() => onUpdateCurrentRound(earliestIncompleteRound)}
+                className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold transition cursor-pointer"
+                title={`Fast sync to earliest incomplete round (MD ${earliestIncompleteRound})`}
+              >
+                Sync to Earliest Incomplete (MD{earliestIncompleteRound})
+              </button>
+            )}
+
+            {/* Quick View in Fixtures */}
+            {onNavigateToFixtures && (
+              <button
+                id="btn-admin-view-in-fixtures"
+                type="button"
+                onClick={() => onNavigateToFixtures(activeMatchday)}
+                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                title={`Open Matchday ${activeMatchday} in Fixtures`}
+              >
+                <span>View in Fixtures</span>
+                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Top Banner & KPI Stats Grid */}
       <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">

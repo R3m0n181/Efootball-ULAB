@@ -25,6 +25,8 @@ interface FixturesViewProps {
   onSelectTeam: (team: Team) => void;
   onViewMatchDetail: (match: Match) => void;
   isAdmin?: boolean;
+  targetRound?: number | null;
+  onClearTargetRound?: () => void;
 }
 
 export const FixturesView: React.FC<FixturesViewProps> = ({
@@ -37,6 +39,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
   onSelectTeam,
   onViewMatchDetail,
   isAdmin = false,
+  targetRound,
+  onClearTargetRound,
 }) => {
   // Total rounds (42 for 21 teams in Home & Away double round-robin)
   const totalRounds = config.totalRounds || 42;
@@ -56,11 +60,17 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
     return 1;
   }, [matches, totalRounds]);
 
-  const [selectedRound, setSelectedRound] = useState<number>(() => earliestIncompleteRound);
+  // Active matchday synced with tournament config and Manager Log
+  const activeMatchday = config.currentRound && config.currentRound > 0 ? config.currentRound : earliestIncompleteRound;
+
+  const [selectedRound, setSelectedRound] = useState<number>(() => {
+    if (targetRound && targetRound > 0 && targetRound <= totalRounds) return targetRound;
+    return activeMatchday;
+  });
 
   // Default to 'scheduled' for incomplete matchdays, and 'all' for completed matchdays
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'scheduled'>(() => {
-    const initialRoundMatches = matches.filter((m) => m.round === earliestIncompleteRound);
+    const initialRoundMatches = matches.filter((m) => m.round === activeMatchday);
     const isCompleted =
       initialRoundMatches.length > 0 &&
       initialRoundMatches.every((m) => m.status === 'completed');
@@ -83,6 +93,26 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
       roundMatchList.every((m) => m.status === 'completed');
     setStatusFilter(isCompleted ? 'all' : 'scheduled');
   };
+
+  // Sync selectedRound when targetRound prop changes
+  useEffect(() => {
+    if (targetRound && targetRound > 0 && targetRound <= totalRounds) {
+      handleSelectRound(targetRound);
+      onClearTargetRound?.();
+    }
+  }, [targetRound, totalRounds]);
+
+  // Sync selectedRound when config.currentRound updates from Manager Log or Settings
+  useEffect(() => {
+    if (config.currentRound && config.currentRound > 0) {
+      setSelectedRound(config.currentRound);
+      const roundMatchList = matches.filter((m) => m.round === config.currentRound);
+      const isCompleted =
+        roundMatchList.length > 0 &&
+        roundMatchList.every((m) => m.status === 'completed');
+      setStatusFilter(isCompleted ? 'all' : 'scheduled');
+    }
+  }, [config.currentRound]);
 
   // Auto-scroll active MD tab into center of view
   useEffect(() => {
@@ -136,23 +166,30 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
     <div id="tournament-fixtures-container" className="space-y-3">
       {/* Round Selection Bar */}
       <div className="bg-[#0f1219] border border-slate-800 p-2.5 rounded-xl shadow-md">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
               Matchday Fixtures ({selectedRound <= 21 ? 'First Leg' : 'Return Leg - Home & Away'})
             </span>
+
+            {/* League Active Matchday Badge (Synced with Manager Log) */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <span>Active: <span className="text-white font-mono font-bold">MD {activeMatchday}</span></span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {selectedRound !== earliestIncompleteRound && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Jump to Active Matchday */}
+            {selectedRound !== activeMatchday && (
               <button
                 id="btn-jump-current-round"
-                onClick={() => handleSelectRound(earliestIncompleteRound)}
-                className="px-2 py-0.5 rounded bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/40 text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1"
-                title={`Jump to earliest incomplete matchday (MD${earliestIncompleteRound})`}
+                onClick={() => handleSelectRound(activeMatchday)}
+                className="px-2 py-0.5 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 text-[10px] font-mono font-bold transition cursor-pointer flex items-center gap-1"
+                title={`Jump to active matchday (MD${activeMatchday})`}
               >
-                <span>Current: MD{earliestIncompleteRound}</span>
+                <span>Jump to MD{activeMatchday}</span>
               </button>
             )}
 
@@ -204,6 +241,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                 roundMatchList.every((m) => m.status === 'completed');
               const hasStarted = roundMatchList.some((m) => m.status === 'completed');
               const isActive = selectedRound === roundNum && selectedTeamId === 'all';
+              const isCurrentActiveMatchday = roundNum === activeMatchday;
 
               return (
                 <button
@@ -214,6 +252,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                   className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                     isActive
                       ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/25 scale-[1.03]'
+                      : isCurrentActiveMatchday
+                      ? 'bg-blue-500/15 text-blue-300 border border-blue-500/50 hover:bg-blue-500/25'
                       : isCompleted
                       ? 'bg-[#0a0c10] text-emerald-400 border border-emerald-500/40 hover:bg-slate-800/80 hover:border-emerald-400'
                       : hasStarted
@@ -222,6 +262,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                   }`}
                 >
                   <span>MD{roundNum}</span>
+                  {isCurrentActiveMatchday && (
+                    <span className="px-1 py-0.2 rounded text-[9px] bg-blue-500 text-white font-sans font-extrabold uppercase tracking-wider">
+                      Active
+                    </span>
+                  )}
                   {isCompleted ? (
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                   ) : hasStarted ? (

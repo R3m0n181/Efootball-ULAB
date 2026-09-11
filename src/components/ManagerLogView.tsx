@@ -32,7 +32,7 @@ export interface ManagerLogViewProps {
   getProofForMatch?: (match: Match) => string | null;
   onSelectTeam?: (team: Team) => void;
   onViewMatchDetail?: (match: Match) => void;
-  onUpdateCurrentRound?: (round: number) => void;
+  onNavigateToFixtures?: (round?: number) => void;
 }
 
 export interface BacklogWarning {
@@ -94,7 +94,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   getProofForMatch,
   onSelectTeam,
   onViewMatchDetail,
-  onUpdateCurrentRound,
+  onNavigateToFixtures,
 }) => {
   // Active matchday defined by tournament config (e.g. MD 14)
   const totalRounds = config.totalRounds || (teams.length > 1 ? (teams.length - 1) * 2 : 42);
@@ -471,19 +471,15 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
             <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold">
               <Calendar className="w-3.5 h-3.5 text-blue-400" />
               <span>Active: <span className="text-white font-mono font-bold">MD {activeMatchday}</span></span>
-              {isAdmin && onUpdateCurrentRound && (
-                <select
-                  value={activeMatchday}
-                  onChange={(e) => onUpdateCurrentRound(Number(e.target.value))}
-                  className="ml-1 bg-[#141824] text-[11px] font-bold text-blue-300 border border-blue-500/40 rounded px-1.5 py-0.5 focus:outline-none focus:border-blue-400 cursor-pointer"
-                  title="Change active matchday"
+              {onNavigateToFixtures && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateToFixtures(activeMatchday)}
+                  className="ml-1 text-[10px] text-blue-400 hover:text-blue-200 underline font-semibold cursor-pointer shrink-0"
+                  title="View this matchday in Fixtures"
                 >
-                  {Array.from({ length: totalRounds }, (_, i) => i + 1).map((r) => (
-                    <option key={r} value={r}>
-                      MD {r}
-                    </option>
-                  ))}
-                </select>
+                  View in Fixtures
+                </button>
               )}
             </div>
 
@@ -705,9 +701,19 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                       className="p-2.5 rounded-lg bg-[#0b0e14]/90 border border-slate-700/80 hover:border-emerald-500/50 transition flex items-center justify-between gap-2 text-xs cursor-pointer group"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 font-mono font-bold text-[10px] shrink-0 border border-slate-700/60">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            if (onNavigateToFixtures) {
+                              e.stopPropagation();
+                              onNavigateToFixtures(pm.round);
+                            }
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-slate-800 text-amber-300 hover:bg-amber-500/25 hover:text-amber-200 font-mono font-bold text-[10px] shrink-0 border border-slate-700/60 cursor-pointer transition"
+                          title={`Jump to Matchday ${pm.round} in Fixtures`}
+                        >
                           R{pm.round}
-                        </span>
+                        </button>
                         <span className="text-slate-400 text-[10px] font-semibold shrink-0">
                           {isHome ? '(H)' : '(A)'}
                         </span>
@@ -786,9 +792,19 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
               <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
                 {summary.partiallyPlayedRounds.length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1 truncate">
+              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 flex-wrap">
                 {summary.partiallyPlayedRounds.length > 0
-                  ? summary.partiallyPlayedRounds.map((r) => `R${r}`).join(', ')
+                  ? summary.partiallyPlayedRounds.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => onNavigateToFixtures?.(r)}
+                        className="px-1.5 py-0.2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition cursor-pointer"
+                        title={`View Round ${r} fixtures`}
+                      >
+                        R{r}
+                      </button>
+                    ))
                   : 'All caught up'}
               </div>
             </div>
@@ -803,9 +819,19 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
               <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
                 {summary.partiallyPlayedRounds.length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1 truncate">
+              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 flex-wrap">
                 {summary.partiallyPlayedRounds.length > 0
-                  ? summary.partiallyPlayedRounds.map((r) => `Round ${r}`).join(', ')
+                  ? summary.partiallyPlayedRounds.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => onNavigateToFixtures?.(r)}
+                        className="px-1.5 py-0.2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition cursor-pointer"
+                        title={`View Matchday ${r} fixtures`}
+                      >
+                        MD{r}
+                      </button>
+                    ))
                   : 'All up to date'}
               </div>
             </div>
@@ -1156,9 +1182,19 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
                               className="p-2.5 sm:p-3 rounded-xl bg-[#111420] border border-slate-800 hover:border-amber-500/50 hover:bg-[#141828] transition flex items-center justify-between gap-2.5 text-xs cursor-pointer group"
                             >
                               <div className="flex items-center gap-2 min-w-0 flex-1">
-                                <span className="px-2 py-0.5 rounded bg-slate-800 text-amber-300 font-mono font-bold text-[11px] shrink-0 border border-slate-700/60">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    if (onNavigateToFixtures) {
+                                      e.stopPropagation();
+                                      onNavigateToFixtures(pm.round);
+                                    }
+                                  }}
+                                  className="px-2 py-0.5 rounded bg-slate-800 text-amber-300 hover:bg-amber-500/25 hover:text-amber-200 font-mono font-bold text-[11px] shrink-0 border border-slate-700/60 cursor-pointer transition"
+                                  title={`Jump to Matchday ${pm.round} in Fixtures`}
+                                >
                                   R{pm.round}
-                                </span>
+                                </button>
                                 <span className="text-slate-400 text-[10px] font-semibold shrink-0">
                                   {isHome ? '(H)' : '(A)'}
                                 </span>

@@ -57,6 +57,16 @@ export default function App() {
     'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin'
   >('standings');
 
+  // Direct Matchday Navigation Sync
+  const [targetRoundForFixtures, setTargetRoundForFixtures] = useState<number | null>(null);
+
+  const handleNavigateToFixtures = (round?: number) => {
+    if (round) {
+      setTargetRoundForFixtures(round);
+    }
+    setActiveTab('fixtures');
+  };
+
   // Modal States
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [selectedMatchForSubmit, setSelectedMatchForSubmit] = useState<Match | null>(null);
@@ -547,6 +557,8 @@ export default function App() {
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
             onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
             isAdmin={!!adminUser}
+            targetRound={targetRoundForFixtures}
+            onClearTargetRound={() => setTargetRoundForFixtures(null)}
           />
         )}
 
@@ -569,7 +581,7 @@ export default function App() {
             adminUser={adminUser}
             onSelectTeam={(team) => handleOpenTeamDetail(team)}
             onViewMatchDetail={(match) => handleOpenMatchDetail(match)}
-            onUpdateCurrentRound={handleUpdateCurrentRound}
+            onNavigateToFixtures={handleNavigateToFixtures}
           />
         )}
 
@@ -606,6 +618,8 @@ export default function App() {
             onRevokeApproval={handleRevokeApproval}
             onBatchApproveMatches={handleBatchApproveMatches}
             onNavigateToManagerLog={() => setActiveTab('managerlog')}
+            onUpdateCurrentRound={handleUpdateCurrentRound}
+            onNavigateToFixtures={handleNavigateToFixtures}
           />
         )}
       </main>
