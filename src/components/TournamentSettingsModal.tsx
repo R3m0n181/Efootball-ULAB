@@ -6,16 +6,21 @@ import {
   Upload,
   Save,
   Calendar,
+  Shuffle,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
-import { TournamentConfig, Team } from '../types';
+import { TournamentConfig, Team, Match } from '../types';
 
 interface TournamentSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   config: TournamentConfig;
   teams: Team[];
+  matches?: Match[];
   onSaveConfig: (config: TournamentConfig) => void;
   onResetSchedule: (isDouble: boolean) => void;
+  onReshuffleSecondLeg?: () => Promise<{ success: boolean; message: string; seedUsed?: number } | boolean>;
   onExportJson: () => void;
   onImportJson: (jsonString: string) => void;
 }
@@ -25,8 +30,10 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   onClose,
   config,
   teams,
+  matches = [],
   onSaveConfig,
   onResetSchedule,
+  onReshuffleSecondLeg,
   onExportJson,
   onImportJson,
 }) => {
@@ -42,6 +49,8 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
 
   const [importText, setImportText] = useState('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isReshuffling, setIsReshuffling] = useState(false);
+  const [reshuffleStatus, setReshuffleStatus] = useState<{ success: boolean; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -143,10 +152,10 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
             <div className="p-3 bg-[#0a0c10] border border-slate-800/80 rounded-xl space-y-2 text-xs">
               <div className="flex items-center gap-2 text-white font-semibold">
                 <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>21 Teams • Double Round-Robin Format (42 Matchdays)</span>
+                <span>21 Teams • Asymmetric Double Round-Robin (42 Matchdays)</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                This tournament follows a double round-robin system where all 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds).
+                This tournament follows an asymmetric double round-robin system where all 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds). The 2nd leg features an authentic asymmetric calendar with non-repeating matchday patterns and minimum spacing between rematches.
               </p>
               <div className="grid grid-cols-2 gap-2 pt-1 text-[10px] text-slate-300">
                 <div className="flex items-center gap-1.5">
@@ -159,6 +168,76 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
                 </div>
               </div>
             </div>
+
+            {/* 2nd Leg Asymmetric Calendar Reshuffler */}
+            {config.format === 'double_round_robin' && onReshuffleSecondLeg && (
+              <div className="p-3 bg-[#0a0c10] border border-cyan-900/40 rounded-xl space-y-2.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-white font-semibold">
+                    <Shuffle className="w-4 h-4 text-cyan-400 shrink-0" />
+                    <span>2nd Leg Asymmetric Calendar</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[10px] font-mono font-bold">
+                    {config.secondLegShuffleSeed ? `Pattern #${config.secondLegShuffleSeed}` : 'Pattern #1'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Reshuffle the matchday order of unplayed Leg 2 fixtures into a new randomized calendar. All 1st leg matches, standings, and submitted results remain untouched.
+                </p>
+                <div className="flex items-center gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!onReshuffleSecondLeg || isReshuffling) return;
+                      setIsReshuffling(true);
+                      setReshuffleStatus(null);
+                      try {
+                        const res = await onReshuffleSecondLeg();
+                        if (typeof res === 'object' && res !== null) {
+                          setReshuffleStatus({
+                            success: res.success,
+                            message: res.message,
+                          });
+                        } else if (res === true) {
+                          setReshuffleStatus({
+                            success: true,
+                            message: '2nd leg schedule reshuffled with new pattern!',
+                          });
+                        }
+                      } catch (err: any) {
+                        setReshuffleStatus({
+                          success: false,
+                          message: err?.message || 'Failed to reshuffle schedule',
+                        });
+                      } finally {
+                        setIsReshuffling(false);
+                      }
+                    }}
+                    disabled={isReshuffling}
+                    className="flex-1 py-2 px-3 rounded-lg bg-cyan-600/20 border border-cyan-500/40 hover:bg-cyan-600/30 active:scale-98 disabled:opacity-50 text-cyan-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                  >
+                    <Shuffle className={`w-3.5 h-3.5 text-cyan-400 ${isReshuffling ? 'animate-spin' : ''}`} />
+                    <span>{isReshuffling ? 'Generating New Calendar...' : 'Reshuffle 2nd Leg Again'}</span>
+                  </button>
+                </div>
+                {reshuffleStatus && (
+                  <div
+                    className={`flex items-center gap-2 p-2 rounded-lg text-[11px] font-medium ${
+                      reshuffleStatus.success
+                        ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-800/50'
+                        : 'bg-rose-950/40 text-rose-300 border border-rose-800/50'
+                    }`}
+                  >
+                    {reshuffleStatus.success ? (
+                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                    ) : (
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                    )}
+                    <span>{reshuffleStatus.message}</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Active Matchday Controller */}
             <div className="p-3 bg-[#141824] border border-amber-500/30 rounded-xl space-y-2">

@@ -1,6 +1,10 @@
 import { Team, Match, TournamentConfig } from '../types';
 import { INITIAL_TEAMS, INITIAL_CONFIG } from '../data/initialData';
-import { generateRoundRobinSchedule } from './scheduler';
+import {
+  generateRoundRobinSchedule,
+  reorganizeUnplayedSecondLegAsymmetric,
+  reshuffleSecondLeg,
+} from './scheduler';
 
 const STORAGE_KEYS = {
   TEAMS: 'efootball_league_premier_v2_teams',
@@ -45,11 +49,48 @@ export function loadTournamentState(): StoredState {
         return t;
       });
 
+      let matches: Match[] = JSON.parse(rawMatches);
+      let byesPerRound: Record<number, string> = rawByes ? JSON.parse(rawByes) : {};
+      const parsedConfig: TournamentConfig = JSON.parse(rawConfig);
+
+      // Auto-upgrade unplayed double round-robin 2nd legs to reshuffled asymmetric pattern (version 2)
+      if (parsedConfig.format === 'double_round_robin') {
+        if (parsedConfig.secondLegShuffleVersion !== 2) {
+          const res = reshuffleSecondLeg(matches, updatedTeams, byesPerRound, 1);
+          if (res.success) {
+            matches = res.matches;
+            byesPerRound = res.byesPerRound;
+            parsedConfig.secondLegShuffleVersion = 2;
+            parsedConfig.secondLegShuffleSeed = 1;
+            saveTournamentState({
+              teams: updatedTeams,
+              matches,
+              config: parsedConfig,
+              byesPerRound,
+            });
+          }
+        } else {
+          // Check if still symmetric
+          const { matches: updatedMatches, byesPerRound: updatedByes, updated } =
+            reorganizeUnplayedSecondLegAsymmetric(matches, updatedTeams, byesPerRound);
+          if (updated) {
+            matches = updatedMatches;
+            byesPerRound = updatedByes;
+            saveTournamentState({
+              teams: updatedTeams,
+              matches,
+              config: parsedConfig,
+              byesPerRound,
+            });
+          }
+        }
+      }
+
       return {
         teams: updatedTeams,
-        matches: JSON.parse(rawMatches),
-        config: JSON.parse(rawConfig),
-        byesPerRound: rawByes ? JSON.parse(rawByes) : {},
+        matches,
+        config: parsedConfig,
+        byesPerRound,
       };
     }
   } catch (err) {

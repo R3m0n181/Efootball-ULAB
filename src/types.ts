@@ -111,6 +111,8 @@ export interface TournamentConfig {
   totalRounds: number;
   topQualifierSpots: number; // e.g. 4 for Champions League / Playoffs
   europaSpots: number; // e.g. next 4 spots
+  secondLegShuffleSeed?: number;
+  secondLegShuffleVersion?: number;
 }
 
 export interface MatchHighStat {
