@@ -1,10 +1,6 @@
 import { Team, Match, TournamentConfig } from '../types';
 import { INITIAL_TEAMS, INITIAL_CONFIG } from '../data/initialData';
-import {
-  generateRoundRobinSchedule,
-  reorganizeUnplayedSecondLegAsymmetric,
-  reshuffleSecondLeg,
-} from './scheduler';
+import { generateRoundRobinSchedule, reorganizeUnplayedSecondLegAsymmetric } from './scheduler';
 
 const STORAGE_KEYS = {
   TEAMS: 'efootball_league_premier_v2_teams',
@@ -53,36 +49,23 @@ export function loadTournamentState(): StoredState {
       let byesPerRound: Record<number, string> = rawByes ? JSON.parse(rawByes) : {};
       const parsedConfig: TournamentConfig = JSON.parse(rawConfig);
 
-      // Auto-upgrade unplayed double round-robin 2nd legs to reshuffled asymmetric pattern (version 2)
+      // Auto-upgrade unplayed symmetric double round-robin 2nd legs to the asymmetric pattern
       if (parsedConfig.format === 'double_round_robin') {
-        if (parsedConfig.secondLegShuffleVersion !== 2) {
-          const res = reshuffleSecondLeg(matches, updatedTeams, byesPerRound, 1);
-          if (res.success) {
-            matches = res.matches;
-            byesPerRound = res.byesPerRound;
-            parsedConfig.secondLegShuffleVersion = 2;
-            parsedConfig.secondLegShuffleSeed = 1;
-            saveTournamentState({
-              teams: updatedTeams,
-              matches,
-              config: parsedConfig,
-              byesPerRound,
-            });
-          }
-        } else {
-          // Check if still symmetric
-          const { matches: updatedMatches, byesPerRound: updatedByes, updated } =
-            reorganizeUnplayedSecondLegAsymmetric(matches, updatedTeams, byesPerRound);
-          if (updated) {
-            matches = updatedMatches;
-            byesPerRound = updatedByes;
-            saveTournamentState({
-              teams: updatedTeams,
-              matches,
-              config: parsedConfig,
-              byesPerRound,
-            });
-          }
+        const pattern = parsedConfig.secondLegPattern || 'crescendo';
+        if (!parsedConfig.secondLegPattern) {
+          parsedConfig.secondLegPattern = pattern;
+        }
+        const { matches: updatedMatches, byesPerRound: updatedByes, updated } =
+          reorganizeUnplayedSecondLegAsymmetric(matches, updatedTeams, byesPerRound, pattern);
+        if (updated) {
+          matches = updatedMatches;
+          byesPerRound = updatedByes;
+          saveTournamentState({
+            teams: updatedTeams,
+            matches,
+            config: parsedConfig,
+            byesPerRound,
+          });
         }
       }
 
@@ -100,7 +83,8 @@ export function loadTournamentState(): StoredState {
   // First time initialization: generate fresh schedule for INITIAL_TEAMS in Double Round-Robin (Home & Away)
   const teams = [...INITIAL_TEAMS];
   const isDouble = INITIAL_CONFIG.format === 'double_round_robin';
-  const { matches, byesPerRound } = generateRoundRobinSchedule(teams, isDouble);
+  const pattern = INITIAL_CONFIG.secondLegPattern || 'crescendo';
+  const { matches, byesPerRound } = generateRoundRobinSchedule(teams, isDouble, pattern);
 
   const totalRounds = isDouble ? (teams.length % 2 === 0 ? (teams.length - 1) * 2 : teams.length * 2) : (teams.length % 2 === 0 ? teams.length - 1 : teams.length);
 
@@ -144,7 +128,8 @@ export function resetTournamentSchedule(
   config: TournamentConfig
 ): StoredState {
   const isDouble = config.format === 'double_round_robin';
-  const { matches, byesPerRound } = generateRoundRobinSchedule(teams, isDouble);
+  const pattern = config.secondLegPattern || 'crescendo';
+  const { matches, byesPerRound } = generateRoundRobinSchedule(teams, isDouble, pattern);
   const totalRounds = isDouble ? (teams.length % 2 === 0 ? (teams.length - 1) * 2 : teams.length * 2) : (teams.length % 2 === 0 ? teams.length - 1 : teams.length);
 
   const newState: StoredState = {

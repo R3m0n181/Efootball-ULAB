@@ -6,11 +6,14 @@ import {
   Upload,
   Save,
   Calendar,
-  Shuffle,
+  Zap,
+  RefreshCw,
+  Sparkles,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { TournamentConfig, Team, Match } from '../types';
+import { TournamentConfig, Team, SecondLegPattern, Match } from '../types';
+import { SECOND_LEG_PATTERNS_METADATA } from '../utils/scheduler';
 
 interface TournamentSettingsModalProps {
   isOpen: boolean;
@@ -20,7 +23,7 @@ interface TournamentSettingsModalProps {
   matches?: Match[];
   onSaveConfig: (config: TournamentConfig) => void;
   onResetSchedule: (isDouble: boolean) => void;
-  onReshuffleSecondLeg?: () => Promise<{ success: boolean; message: string; seedUsed?: number } | boolean>;
+  onRealignSecondLeg?: (pattern: SecondLegPattern) => { success: boolean; message: string };
   onExportJson: () => void;
   onImportJson: (jsonString: string) => void;
 }
@@ -33,7 +36,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   matches = [],
   onSaveConfig,
   onResetSchedule,
-  onReshuffleSecondLeg,
+  onRealignSecondLeg,
   onExportJson,
   onImportJson,
 }) => {
@@ -42,6 +45,9 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   const [format, setFormat] = useState<'single_round_robin' | 'double_round_robin'>(
     config.format
   );
+  const [secondLegPattern, setSecondLegPattern] = useState<SecondLegPattern>(
+    config.secondLegPattern || 'crescendo'
+  );
   const [pointsWin, setPointsWin] = useState(config.pointsForWin);
   const [pointsDraw, setPointsDraw] = useState(config.pointsForDraw);
   const [pointsLoss, setPointsLoss] = useState(config.pointsForLoss);
@@ -49,8 +55,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
 
   const [importText, setImportText] = useState('');
   const [importStatus, setImportStatus] = useState<string | null>(null);
-  const [isReshuffling, setIsReshuffling] = useState(false);
-  const [reshuffleStatus, setReshuffleStatus] = useState<{ success: boolean; message: string } | null>(null);
+  const [realignStatus, setRealignStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   if (!isOpen) return null;
 
@@ -62,12 +67,24 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
       name,
       season,
       format,
+      secondLegPattern,
       currentRound: boundedRound,
       pointsForWin: Number(pointsWin),
       pointsForDraw: Number(pointsDraw),
       pointsForLoss: Number(pointsLoss),
     });
     onClose();
+  };
+
+  const handleRealignClick = () => {
+    if (onRealignSecondLeg) {
+      const res = onRealignSecondLeg(secondLegPattern);
+      setRealignStatus({
+        type: res.success ? 'success' : 'error',
+        message: res.message,
+      });
+      setTimeout(() => setRealignStatus(null), 4500);
+    }
   };
 
   const handleImportSubmit = () => {
@@ -84,6 +101,11 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
     }
   };
 
+  const totalRounds = config.totalRounds || 42;
+  const halfRounds = Math.floor(totalRounds / 2);
+  const leg2Matches = matches.filter((m) => m.round > halfRounds);
+  const anyLeg2Played = leg2Matches.some((m) => m.status === 'completed' || m.homeScore !== null);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4 bg-black/80 backdrop-blur-xs overflow-y-auto">
       <div className="bg-[#0f1219] border-t sm:border border-slate-800 rounded-t-2xl sm:rounded-xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col animate-in slide-in-from-bottom sm:zoom-in-95 duration-200">
@@ -95,7 +117,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Tournament Admin &amp; Settings</h3>
-              <p className="text-[11px] text-slate-400">League format, rules, and data backups</p>
+              <p className="text-[11px] text-slate-400">League format, rules, and calendar optimization</p>
             </div>
           </div>
           <button
@@ -155,7 +177,7 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
                 <span>21 Teams • Asymmetric Double Round-Robin (42 Matchdays)</span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                This tournament follows an asymmetric double round-robin system where all 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds). The 2nd leg features an authentic asymmetric calendar with non-repeating matchday patterns and minimum spacing between rematches.
+                All 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds). The 2nd leg utilizes an asymmetric schedule designed to avoid predictable repetition and optimize table drama.
               </p>
               <div className="grid grid-cols-2 gap-2 pt-1 text-[10px] text-slate-300">
                 <div className="flex items-center gap-1.5">
@@ -169,75 +191,94 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
               </div>
             </div>
 
-            {/* 2nd Leg Asymmetric Calendar Reshuffler */}
-            {config.format === 'double_round_robin' && onReshuffleSecondLeg && (
-              <div className="p-3 bg-[#0a0c10] border border-cyan-900/40 rounded-xl space-y-2.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-white font-semibold">
-                    <Shuffle className="w-4 h-4 text-cyan-400 shrink-0" />
-                    <span>2nd Leg Asymmetric Calendar</span>
+            {/* 2nd Leg Volatility Pattern Selector */}
+            <div className="p-3 bg-[#0f1422] border border-emerald-500/30 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <span className="text-xs font-bold text-white block">2nd Leg Schedule Pattern (Table Volatility)</span>
+                    <span className="text-[10px] text-slate-400">Controls how return fixtures are sequenced to maximize table movements</span>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 text-[10px] font-mono font-bold">
-                    {config.secondLegShuffleSeed ? `Pattern #${config.secondLegShuffleSeed}` : 'Pattern #1'}
-                  </span>
                 </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">
-                  Reshuffle the matchday order of unplayed Leg 2 fixtures into a new randomized calendar. All 1st leg matches, standings, and submitted results remain untouched.
-                </p>
-                <div className="flex items-center gap-2 pt-0.5">
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (!onReshuffleSecondLeg || isReshuffling) return;
-                      setIsReshuffling(true);
-                      setReshuffleStatus(null);
-                      try {
-                        const res = await onReshuffleSecondLeg();
-                        if (typeof res === 'object' && res !== null) {
-                          setReshuffleStatus({
-                            success: res.success,
-                            message: res.message,
-                          });
-                        } else if (res === true) {
-                          setReshuffleStatus({
-                            success: true,
-                            message: '2nd leg schedule reshuffled with new pattern!',
-                          });
-                        }
-                      } catch (err: any) {
-                        setReshuffleStatus({
-                          success: false,
-                          message: err?.message || 'Failed to reshuffle schedule',
-                        });
-                      } finally {
-                        setIsReshuffling(false);
-                      }
-                    }}
-                    disabled={isReshuffling}
-                    className="flex-1 py-2 px-3 rounded-lg bg-cyan-600/20 border border-cyan-500/40 hover:bg-cyan-600/30 active:scale-98 disabled:opacity-50 text-cyan-200 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-                  >
-                    <Shuffle className={`w-3.5 h-3.5 text-cyan-400 ${isReshuffling ? 'animate-spin' : ''}`} />
-                    <span>{isReshuffling ? 'Generating New Calendar...' : 'Reshuffle 2nd Leg Again'}</span>
-                  </button>
-                </div>
-                {reshuffleStatus && (
-                  <div
-                    className={`flex items-center gap-2 p-2 rounded-lg text-[11px] font-medium ${
-                      reshuffleStatus.success
-                        ? 'bg-emerald-950/40 text-emerald-300 border border-emerald-800/50'
-                        : 'bg-rose-950/40 text-rose-300 border border-rose-800/50'
-                    }`}
-                  >
-                    {reshuffleStatus.success ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                    ) : (
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
-                    )}
-                    <span>{reshuffleStatus.message}</span>
-                  </div>
-                )}
               </div>
-            )}
+
+              {/* Pattern options */}
+              <div className="grid grid-cols-1 gap-2 pt-1">
+                {(Object.keys(SECOND_LEG_PATTERNS_METADATA) as SecondLegPattern[]).map((patternKey) => {
+                  const meta = SECOND_LEG_PATTERNS_METADATA[patternKey];
+                  const isSelected = secondLegPattern === patternKey;
+                  return (
+                    <button
+                      key={patternKey}
+                      type="button"
+                      onClick={() => setSecondLegPattern(patternKey)}
+                      className={`p-2.5 rounded-lg border text-left transition cursor-pointer flex flex-col gap-1 ${
+                        isSelected
+                          ? 'bg-emerald-500/10 border-emerald-500/60 ring-1 ring-emerald-500/30'
+                          : 'bg-[#0a0c10] border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                          <span className="text-xs font-bold text-white">{meta.name}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold border ${
+                          patternKey === 'crescendo'
+                            ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                            : patternKey === 'shockwaves'
+                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                            : patternKey === 'gauntlet'
+                            ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                            : 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                        }`}>
+                          {meta.volatilityRating}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-300 leading-snug">{meta.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Re-align Calendar Button */}
+              {onRealignSecondLeg && (
+                <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-slate-400">
+                      {anyLeg2Played
+                        ? '2nd leg matches in progress (calendar locked)'
+                        : 'Re-align unplayed 2nd leg fixtures immediately:'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRealignClick}
+                      disabled={anyLeg2Played}
+                      className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-emerald-300 font-bold text-xs flex items-center gap-1.5 border border-slate-700 transition cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Apply Pattern to Calendar</span>
+                    </button>
+                  </div>
+
+                  {realignStatus && (
+                    <div className={`p-2 rounded text-[11px] flex items-center gap-1.5 ${
+                      realignStatus.type === 'success'
+                        ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                        : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                    }`}>
+                      {realignStatus.type === 'success' ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                      ) : (
+                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
+                      )}
+                      <span>{realignStatus.message}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Active Matchday Controller */}
             <div className="p-3 bg-[#141824] border border-amber-500/30 rounded-xl space-y-2">

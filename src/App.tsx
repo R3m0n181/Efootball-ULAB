@@ -10,7 +10,8 @@ import {
 } from './utils/storage';
 import {
   reorganizeUnplayedSecondLegAsymmetric,
-  reshuffleSecondLeg,
+  realignSecondLegSchedule,
+  SECOND_LEG_PATTERNS_METADATA,
 } from './utils/scheduler';
 import {
   subscribeToLeagueState,
@@ -28,7 +29,7 @@ import {
 } from './utils/calculations';
 import { seedSampleMatches } from './utils/sampleData';
 import { getCurrentAdmin, logoutAdmin, AdminUser } from './utils/auth';
-import { Team, Match, TournamentConfig } from './types';
+import { Team, Match, TournamentConfig, SecondLegPattern } from './types';
 import { Header } from './components/Header';
 import { StandingsTable } from './components/StandingsTable';
 import { FixturesView } from './components/FixturesView';
@@ -105,50 +106,30 @@ export default function App() {
 
     const unsubscribe = subscribeToLeagueState(
       (cloudState) => {
-        // If double round-robin and unplayed 2nd leg is either not yet version 2 or still symmetric, seamlessly upgrade to reshuffled asymmetric schedule
+        // If double round-robin and unplayed 2nd leg is symmetric, seamlessly upgrade to asymmetric schedule
         if (cloudState.config.format === 'double_round_robin') {
-          if (cloudState.config.secondLegShuffleVersion !== 2 && (!cloudState.config.secondLegShuffleVersion || cloudState.config.secondLegShuffleVersion < 2)) {
-            const res = reshuffleSecondLeg(
+          const pattern = cloudState.config.secondLegPattern || 'crescendo';
+          const { matches: upgradedMatches, byesPerRound: upgradedByes, updated } =
+            reorganizeUnplayedSecondLegAsymmetric(
               cloudState.matches,
               cloudState.teams,
               cloudState.byesPerRound || {},
-              1
+              pattern
             );
-            if (res.success) {
-              const upgradedState: StoredState = {
-                ...cloudState,
-                matches: res.matches,
-                byesPerRound: res.byesPerRound,
-                config: {
-                  ...cloudState.config,
-                  secondLegShuffleVersion: 2,
-                  secondLegShuffleSeed: 1,
-                },
-              };
-              setTournamentState(upgradedState);
-              setIsCloudSynced(true);
-              saveLeagueStateToCloud(upgradedState).catch(console.error);
-              return;
-            }
-          } else {
-            const { matches: upgradedMatches, byesPerRound: upgradedByes, updated } =
-              reorganizeUnplayedSecondLegAsymmetric(
-                cloudState.matches,
-                cloudState.teams,
-                cloudState.byesPerRound || {},
-                cloudState.config.secondLegShuffleSeed || 1
-              );
-            if (updated) {
-              const upgradedState: StoredState = {
-                ...cloudState,
-                matches: upgradedMatches,
-                byesPerRound: upgradedByes,
-              };
-              setTournamentState(upgradedState);
-              setIsCloudSynced(true);
-              saveLeagueStateToCloud(upgradedState).catch(console.error);
-              return;
-            }
+          if (updated) {
+            const upgradedState = {
+              ...cloudState,
+              config: {
+                ...cloudState.config,
+                secondLegPattern: pattern,
+              },
+              matches: upgradedMatches,
+              byesPerRound: upgradedByes,
+            };
+            setTournamentState(upgradedState);
+            setIsCloudSynced(true);
+            saveLeagueStateToCloud(upgradedState).catch(console.error);
+            return;
           }
         }
         setTournamentState(cloudState);
@@ -487,46 +468,6 @@ export default function App() {
     }
   };
 
-  const handleReshuffleSecondLeg = async () => {
-    // Generate a fresh random pattern seed distinct from current seed
-    const currentSeed = config.secondLegShuffleSeed || 1;
-    let nextSeed = Math.floor(Math.random() * 90000) + 2;
-    if (nextSeed === currentSeed) nextSeed += 13;
-
-    const res = reshuffleSecondLeg(matches, teams, byesPerRound, nextSeed);
-    if (!res.success) {
-      return { success: false, message: res.message };
-    }
-
-    const updatedConfig: TournamentConfig = {
-      ...config,
-      secondLegShuffleVersion: (config.secondLegShuffleVersion || 2) + 1,
-      secondLegShuffleSeed: nextSeed,
-    };
-
-    const newState: StoredState = {
-      ...tournamentState,
-      matches: res.matches,
-      byesPerRound: res.byesPerRound,
-      config: updatedConfig,
-    };
-
-    setTournamentState(newState);
-    saveTournamentState(newState);
-
-    try {
-      await saveLeagueStateToCloud(newState);
-    } catch (err) {
-      console.error('Failed to sync reshuffled calendar to Firestore:', err);
-    }
-
-    return {
-      success: true,
-      message: `2nd leg calendar successfully reshuffled with new pattern #${nextSeed}!`,
-      seedUsed: nextSeed,
-    };
-  };
-
   const handleSeedSampleData = async () => {
     const seeded = seedSampleMatches(matches, teams);
     const newState: StoredState = {
@@ -568,8 +509,31 @@ export default function App() {
   };
 
   const handleSaveConfig = async (newConfig: TournamentConfig) => {
+    let updatedMatches = tournamentState.matches;
+    let updatedByes = tournamentState.byesPerRound || {};
+
+    // If second leg pattern changed in double round-robin, re-align unplayed Leg 2 fixtures
+    if (
+      newConfig.format === 'double_round_robin' &&
+      newConfig.secondLegPattern &&
+      newConfig.secondLegPattern !== config.secondLegPattern
+    ) {
+      const res = realignSecondLegSchedule(
+        tournamentState.matches,
+        tournamentState.teams,
+        updatedByes,
+        newConfig.secondLegPattern
+      );
+      if (res.updated) {
+        updatedMatches = res.matches;
+        updatedByes = res.byesPerRound;
+      }
+    }
+
     const newState: StoredState = {
       ...tournamentState,
+      matches: updatedMatches,
+      byesPerRound: updatedByes,
       config: newConfig,
     };
     setTournamentState(newState);
@@ -579,6 +543,44 @@ export default function App() {
     } catch (err) {
       console.error('Failed to sync config to Firestore:', err);
     }
+  };
+
+  const handleRealignSecondLeg = (pattern: SecondLegPattern) => {
+    const res = realignSecondLegSchedule(
+      tournamentState.matches,
+      tournamentState.teams,
+      tournamentState.byesPerRound || {},
+      pattern
+    );
+
+    if (!res.updated) {
+      return {
+        success: false,
+        message: res.reason || 'Cannot re-align calendar at this stage.',
+      };
+    }
+
+    const updatedConfig: TournamentConfig = {
+      ...config,
+      secondLegPattern: pattern,
+    };
+
+    const newState: StoredState = {
+      ...tournamentState,
+      matches: res.matches,
+      byesPerRound: res.byesPerRound,
+      config: updatedConfig,
+    };
+
+    setTournamentState(newState);
+    saveLeagueStateToCloud(newState).catch((err) =>
+      console.error('Failed to sync realigned calendar to Firestore:', err)
+    );
+
+    return {
+      success: true,
+      message: `2nd leg calendar successfully re-aligned to "${SECOND_LEG_PATTERNS_METADATA[pattern].name}"!`,
+    };
   };
 
   const handleUpdateCurrentRound = async (round: number) => {
@@ -827,7 +829,7 @@ export default function App() {
         matches={matches}
         onSaveConfig={handleSaveConfig}
         onResetSchedule={handleResetSchedule}
-        onReshuffleSecondLeg={handleReshuffleSecondLeg}
+        onRealignSecondLeg={handleRealignSecondLeg}
         onExportJson={handleExportJson}
         onImportJson={handleImportJson}
       />

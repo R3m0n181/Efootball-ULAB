@@ -196,6 +196,7 @@ export const INITIAL_CONFIG: TournamentConfig = {
   name: 'eFootball Mobile Premier League',
   season: 'Season 2026 - Master Cup',
   format: 'double_round_robin',
+  secondLegPattern: 'crescendo',
   pointsForWin: 3,
   pointsForDraw: 1,
   pointsForLoss: 0,

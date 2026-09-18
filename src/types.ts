@@ -100,10 +100,22 @@ export interface HighScoringMatchStat {
   playedAt?: string;
 }
 
+export type SecondLegPattern = 'crescendo' | 'shockwaves' | 'gauntlet' | 'balanced';
+
+export interface SecondLegPatternInfo {
+  id: SecondLegPattern;
+  name: string;
+  tagline: string;
+  description: string;
+  volatilityRating: 'Maximum (Escalating)' | 'Maximum (Continuous)' | 'High (Frontloaded)' | 'Standard (Even)';
+  color: string;
+}
+
 export interface TournamentConfig {
   name: string;
   season: string;
   format: 'single_round_robin' | 'double_round_robin';
+  secondLegPattern?: SecondLegPattern;
   pointsForWin: number;
   pointsForDraw: number;
   pointsForLoss: number;
@@ -111,8 +123,6 @@ export interface TournamentConfig {
   totalRounds: number;
   topQualifierSpots: number; // e.g. 4 for Champions League / Playoffs
   europaSpots: number; // e.g. next 4 spots
-  secondLegShuffleSeed?: number;
-  secondLegShuffleVersion?: number;
 }
 
 export interface MatchHighStat {

@@ -173,6 +173,23 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               Matchday Fixtures ({selectedRound <= 21 ? 'First Leg' : 'Return Leg - Home & Away'})
             </span>
 
+            {/* Subtle Phase 2 Indicator */}
+            {selectedRound > 21 && (
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                selectedRound >= 36
+                  ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                  : selectedRound >= 29
+                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                  : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+              }`}>
+                {selectedRound >= 36
+                  ? 'Phase 2 • Grand Climax'
+                  : selectedRound >= 29
+                  ? 'Phase 2 • Scramble'
+                  : 'Phase 2 • Resumption'}
+              </span>
+            )}
+
             {/* League Active Matchday Badge (Synced with Manager Log) */}
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-300 text-xs font-semibold">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
