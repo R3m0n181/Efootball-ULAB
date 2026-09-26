@@ -74,8 +74,10 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
       .sort((a, b) => a.round - b.round);
   }, [matches, team?.id]);
 
-  // Unified 42-round schedule with matches & bye/rest matchdays in chronological order
-  const effectiveTotalRounds = totalRounds || 42;
+  // Unified schedule with matches & bye/rest matchdays in chronological order
+  const effectiveTotalRounds = totalRounds || (teams.length % 2 === 0 ? (teams.length - 1) * 2 : teams.length * 2) || 38;
+  const isOddTeams = teams.length % 2 !== 0;
+  const leg1RoundsCount = Math.floor(effectiveTotalRounds / 2);
 
   const scheduleItems = useMemo(() => {
     if (!team) return [];
@@ -91,8 +93,8 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
 
       if (match) {
         items.push({ type: 'match', round: r, match });
-      } else {
-        // Bye / Rest matchday for this team
+      } else if (isOddTeams && r <= leg1RoundsCount) {
+        // Bye / Rest matchday for this team in 1st leg only if odd team count
         const roundMatches = matches.filter((m) => m.round === r);
         const isRoundFinished =
           roundMatches.length > 0 &&
@@ -101,14 +103,14 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
         items.push({
           type: 'bye',
           round: r,
-          isFirstLeg: r <= Math.floor(effectiveTotalRounds / 2),
+          isFirstLeg: true,
           isRoundFinished,
         });
       }
     }
 
     return items;
-  }, [matches, team?.id, effectiveTotalRounds]);
+  }, [matches, team?.id, effectiveTotalRounds, isOddTeams, leg1RoundsCount]);
 
   const byeRounds = useMemo(() => {
     return scheduleItems

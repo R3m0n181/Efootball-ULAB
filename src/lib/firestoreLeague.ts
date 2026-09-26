@@ -8,8 +8,8 @@ import {
 import { db, isFirebaseConfigured, handleFirestoreError, OperationType } from './firebase';
 import { Team, Match, TournamentConfig } from '../types';
 import { INITIAL_TEAMS, INITIAL_CONFIG } from '../data/initialData';
-import { generateRoundRobinSchedule } from '../utils/scheduler';
-import { StoredState, loadTournamentState, saveTournamentState } from '../utils/storage';
+import { generateRoundRobinSchedule, squeezeFirstLegAndCleanSecondLeg } from '../utils/scheduler';
+import { StoredState, loadTournamentState, saveTournamentState, ensureSecondLegMatchesUnplayed } from '../utils/storage';
 import { getTeamLogoUrl } from '../assets/teamLogos';
 import { saveMatchProof } from './matchProofs';
 
@@ -125,11 +125,21 @@ export function subscribeToLeagueState(
             };
           });
 
+          let rawMatchesList = data.matches || [];
+          let currentConfig = data.config || INITIAL_CONFIG;
+
+          // Reorganize and squeeze 1st leg into MD 1-19 (10 matches/MD, 0 overlaps) and ensure 2nd leg is MD 20-38 unplayed
+          const squeezed = squeezeFirstLegAndCleanSecondLeg(
+            rawMatchesList,
+            updatedTeams,
+            currentConfig
+          );
+
           const state: StoredState = {
             teams: updatedTeams,
-            matches: data.matches || [],
-            config: data.config || INITIAL_CONFIG,
-            byesPerRound: data.byesPerRound || {},
+            matches: squeezed.matches,
+            config: squeezed.config,
+            byesPerRound: squeezed.byesPerRound || {},
           };
 
           // Also cache locally for seamless offline fallback

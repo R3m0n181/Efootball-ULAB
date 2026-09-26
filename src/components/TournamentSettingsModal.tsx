@@ -183,19 +183,36 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
             <div className="p-3 bg-[#0a0c10] border border-slate-800/80 rounded-xl space-y-2 text-xs">
               <div className="flex items-center gap-2 text-white font-semibold">
                 <Calendar className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>21 Teams • Asymmetric Double Round-Robin (42 Matchdays)</span>
+                <span>
+                  {teams.length} Teams • {format === 'double_round_robin' ? `Asymmetric Double Round-Robin (${config.totalRounds || 38} Matchdays)` : `Single Round-Robin (${config.totalRounds || 19} Matchdays)`}
+                </span>
               </div>
               <p className="text-[11px] text-slate-400 leading-relaxed">
-                All 21 participating clubs play each opponent twice across 42 matchdays (20 Home &amp; 20 Away matches per club, plus 2 designated bye rounds). The 2nd leg utilizes an asymmetric schedule designed to avoid predictable repetition and optimize table drama.
+                {format === 'double_round_robin'
+                  ? `All ${teams.length} participating clubs play each opponent twice across ${config.totalRounds || 38} matchdays (${(teams.length - 1)} Home & ${(teams.length - 1)} Away matches per club, 0 byes). The 2nd leg utilizes an asymmetric schedule designed to optimize table volatility.`
+                  : `All ${teams.length} participating clubs play each opponent once across ${config.totalRounds || 19} matchdays.`}
               </p>
               <div className="grid grid-cols-2 gap-2 pt-1 text-[10px] text-slate-300">
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>Total Fixtures: <strong className="text-white font-mono">420 Matches</strong></span>
+                  <span>
+                    Total Fixtures:{' '}
+                    <strong className="text-white font-mono">
+                      {format === 'double_round_robin'
+                        ? teams.length * (teams.length - 1)
+                        : (teams.length * (teams.length - 1)) / 2}{' '}
+                      Matches
+                    </strong>
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  <span>Matches per Club: <strong className="text-white font-mono">40 Matches</strong></span>
+                  <span>
+                    Matches per Club:{' '}
+                    <strong className="text-white font-mono">
+                      {format === 'double_round_robin' ? (teams.length - 1) * 2 : teams.length - 1} Matches
+                    </strong>
+                  </span>
                 </div>
               </div>
             </div>

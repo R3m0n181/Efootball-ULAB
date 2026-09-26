@@ -12,10 +12,15 @@ export function calculateStandings(
   teams: Team[],
   matches: Match[],
   config: TournamentConfig,
-  venue: 'all' | 'home' | 'away' = 'all'
+  venue: 'all' | 'home' | 'away' = 'all',
+  phase: 'all' | 'leg1' | 'leg2' = 'all'
 ): StandingsRow[] {
   const teamMap = new Map<string, Team>();
   teams.forEach((t) => teamMap.set(t.id, t));
+
+  const isOdd = teams.length % 2 !== 0;
+  const numTeams = isOdd ? teams.length + 1 : teams.length;
+  const numLeg1Rounds = numTeams - 1; // 21 for 21 teams
 
   // Initialize stats for every team
   const statsMap = new Map<
@@ -55,9 +60,14 @@ export function calculateStandings(
     });
   });
 
-  // Sort completed matches by round and match order
+  // Sort completed matches by round and match order, filtered by phase if specified
   const completedMatches = matches
-    .filter((m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null)
+    .filter((m) => {
+      if (m.status !== 'completed' || m.homeScore === null || m.awayScore === null) return false;
+      if (phase === 'leg1') return m.round <= numLeg1Rounds;
+      if (phase === 'leg2') return m.round > numLeg1Rounds;
+      return true;
+    })
     .sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber);
 
   // Process match results

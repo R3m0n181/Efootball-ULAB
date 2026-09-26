@@ -42,8 +42,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
   targetRound,
   onClearTargetRound,
 }) => {
-  // Total rounds (42 for 21 teams in Home & Away double round-robin)
-  const totalRounds = config.totalRounds || 42;
+  const isOdd = teams.length % 2 !== 0;
+  const numLeg1Rounds = isOdd ? teams.length : Math.max(1, teams.length - 1); // 19 for 20 teams
+  const totalRounds = config.totalRounds || (isOdd ? teams.length * 2 : (teams.length - 1) * 2) || 38;
   const roundsArray = Array.from({ length: totalRounds }, (_, i) => i + 1);
 
   // Compute earliest incomplete matchday (the first round with pending/unplayed matches)
@@ -170,21 +171,21 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <Calendar className="w-3.5 h-3.5 text-emerald-400" />
             <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-              Matchday Fixtures ({selectedRound <= 21 ? 'First Leg' : 'Return Leg - Home & Away'})
+              Matchday Fixtures ({selectedRound <= numLeg1Rounds ? `1st Leg (MD 1–${numLeg1Rounds})` : `2nd Leg (MD ${numLeg1Rounds + 1}–${totalRounds})`})
             </span>
 
             {/* Subtle Phase 2 Indicator */}
-            {selectedRound > 21 && (
+            {selectedRound > numLeg1Rounds && (
               <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                selectedRound >= 36
+                selectedRound >= totalRounds - 3
                   ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
-                  : selectedRound >= 29
+                  : selectedRound >= numLeg1Rounds + 8
                   ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                   : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
               }`}>
-                {selectedRound >= 36
+                {selectedRound >= totalRounds - 3
                   ? 'Phase 2 • Grand Climax'
-                  : selectedRound >= 29
+                  : selectedRound >= numLeg1Rounds + 8
                   ? 'Phase 2 • Scramble'
                   : 'Phase 2 • Resumption'}
               </span>
@@ -408,13 +409,51 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
         )}
       </div>
 
+      {/* 2nd Leg Phase Notice Banner */}
+      {selectedRound > numLeg1Rounds && selectedTeamId === 'all' && (
+        <div className="bg-[#0c1424] border border-cyan-500/30 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-cyan-200/90 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-[10px] uppercase tracking-wider shrink-0">
+              2nd Leg Phase
+            </span>
+            <span className="font-medium text-slate-300">
+              No matches have been played in 2nd leg phase yet (Matchdays {numLeg1Rounds + 1}–{totalRounds}). All return fixtures are currently scheduled.
+            </span>
+          </div>
+          {activeMatchday <= numLeg1Rounds && (
+            <button
+              onClick={() => handleSelectRound(activeMatchday)}
+              className="px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-[10px] transition cursor-pointer shrink-0"
+            >
+              Go to Active MD{activeMatchday}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Fixture Match Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {roundMatches.length === 0 ? (
           <div className="col-span-full py-12 text-center bg-[#0f1219] border border-dashed border-slate-800 rounded-xl">
             <Clock className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-slate-400">No matches found for this filter</p>
-            <p className="text-xs text-slate-600 mt-1">Try switching matchday or filter criteria</p>
+            <p className="text-sm font-semibold text-slate-400">
+              {selectedRound > numLeg1Rounds && statusFilter === 'completed'
+                ? 'No matches have been played in 2nd leg phase yet'
+                : 'No matches found for this filter'}
+            </p>
+            <p className="text-xs text-slate-600 mt-1">
+              {selectedRound > numLeg1Rounds && statusFilter === 'completed'
+                ? `All return fixtures in Matchday ${numLeg1Rounds + 1} to ${totalRounds} are pending/scheduled.`
+                : 'Try switching matchday or filter criteria'}
+            </p>
+            {selectedRound > numLeg1Rounds && statusFilter === 'completed' && (
+              <button
+                onClick={() => setStatusFilter('scheduled')}
+                className="mt-3 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition cursor-pointer"
+              >
+                View Scheduled MD{selectedRound} Fixtures
+              </button>
+            )}
           </div>
         ) : (
           roundMatches.map((match) => {

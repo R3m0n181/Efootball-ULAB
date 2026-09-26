@@ -1,6 +1,10 @@
 import { Team, Match, TournamentConfig } from '../types';
 import { INITIAL_TEAMS, INITIAL_CONFIG } from '../data/initialData';
-import { generateRoundRobinSchedule, reorganizeUnplayedSecondLegAsymmetric } from './scheduler';
+import {
+  generateRoundRobinSchedule,
+  reorganizeUnplayedSecondLegAsymmetric,
+  squeezeFirstLegAndCleanSecondLeg,
+} from './scheduler';
 
 const STORAGE_KEYS = {
   TEAMS: 'efootball_league_premier_v2_teams',
@@ -16,6 +20,59 @@ export interface StoredState {
   byesPerRound: Record<number, string>;
 }
 
+/**
+ * Ensures that all matches in the 2nd leg phase (return fixtures, round > numLeg1Rounds)
+ * are strictly scheduled with null scores when no 2nd leg matches have been played yet.
+ */
+export function ensureSecondLegMatchesUnplayed(
+  matches: Match[],
+  teams: Team[],
+  format: string = 'double_round_robin'
+): { matches: Match[]; modified: boolean } {
+  if (format !== 'double_round_robin') {
+    return { matches, modified: false };
+  }
+
+  const isOdd = teams.length % 2 !== 0;
+  const numTeams = isOdd ? teams.length + 1 : teams.length;
+  const numLeg1Rounds = numTeams - 1; // 19 rounds for 20 teams
+
+  let modified = false;
+  const sanitizedMatches = matches.map((m) => {
+    if (m.round > numLeg1Rounds) {
+      if (
+        m.status !== 'scheduled' ||
+        m.homeScore !== null ||
+        m.awayScore !== null ||
+        m.playedAt !== undefined ||
+        m.submittedAt !== undefined ||
+        (m.goals && m.goals.length > 0)
+      ) {
+        modified = true;
+        return {
+          ...m,
+          status: 'scheduled' as const,
+          homeScore: null,
+          awayScore: null,
+          playedAt: undefined,
+          submittedAt: undefined,
+          submittedBy: undefined,
+          goals: [],
+          notes: undefined,
+          screenshotUrl: undefined,
+          auditApproved: false,
+          approvedBy: undefined,
+          approvedAt: undefined,
+          approvalNotes: undefined,
+        };
+      }
+    }
+    return m;
+  });
+
+  return { matches: sanitizedMatches, modified };
+}
+
 export function loadTournamentState(): StoredState {
   try {
     const rawTeams = localStorage.getItem(STORAGE_KEYS.TEAMS);
@@ -24,12 +81,7 @@ export function loadTournamentState(): StoredState {
     const rawByes = localStorage.getItem(STORAGE_KEYS.BYES);
 
     if (rawTeams && rawMatches && rawConfig) {
-      let parsedTeams: Team[] = JSON.parse(rawTeams);
-      // Remove any withdrawn teams (e.g. team-7 PSG)
-      parsedTeams = parsedTeams.filter(
-        (t) => t.id !== 'team-7' && !t.clubName.toLowerCase().includes('paris saint-germain') && t.shortCode !== 'PSG'
-      );
-
+      const parsedTeams: Team[] = JSON.parse(rawTeams);
       // Merge official logos and colors from INITIAL_TEAMS map
       const initialMap = new Map<string, Team>();
       INITIAL_TEAMS.forEach((t) => {
@@ -51,62 +103,30 @@ export function loadTournamentState(): StoredState {
       });
 
       let matches: Match[] = JSON.parse(rawMatches);
-      // Filter out any matches involving team-7 / PSG
-      const hadWithdrawnMatches = matches.some(
-        (m) => m.homeTeamId === 'team-7' || m.awayTeamId === 'team-7'
-      );
-      if (hadWithdrawnMatches) {
-        matches = matches.filter(
-          (m) => m.homeTeamId !== 'team-7' && m.awayTeamId !== 'team-7'
-        );
-      }
-
       let byesPerRound: Record<number, string> = rawByes ? JSON.parse(rawByes) : {};
-      const parsedConfig: TournamentConfig = JSON.parse(rawConfig);
+      let parsedConfig: TournamentConfig = JSON.parse(rawConfig);
 
-      // Recalculate total rounds for 20 teams
-      const isDouble = parsedConfig.format === 'double_round_robin';
-      const expectedTotalRounds = isDouble
-        ? updatedTeams.length % 2 === 0
-          ? (updatedTeams.length - 1) * 2
-          : updatedTeams.length * 2
-        : updatedTeams.length % 2 === 0
-        ? updatedTeams.length - 1
-        : updatedTeams.length;
+      // Reorganize and squeeze 1st leg into MD 1-19 (10 matches/MD, no overlaps) and ensure 2nd leg is MD 20-38 unplayed
+      const squeezed = squeezeFirstLegAndCleanSecondLeg(matches, updatedTeams, parsedConfig);
+      matches = squeezed.matches;
+      byesPerRound = squeezed.byesPerRound;
+      parsedConfig = squeezed.config;
 
-      parsedConfig.totalRounds = expectedTotalRounds;
-
-      // If matches were pruned or schedule was for 21 teams (or has no completed matches), regenerate pristine schedule
-      const hasCompletedMatches = matches.some((m) => m.status === 'completed');
-      if (hadWithdrawnMatches || matches.length === 0 || (!hasCompletedMatches && matches.length !== expectedTotalRounds * (updatedTeams.length / 2))) {
-        const pattern = parsedConfig.secondLegPattern || 'crescendo';
-        const fresh = generateRoundRobinSchedule(updatedTeams, isDouble, pattern);
-        matches = fresh.matches;
-        byesPerRound = fresh.byesPerRound;
+      if (squeezed.modified) {
+        saveTournamentState({
+          teams: updatedTeams,
+          matches,
+          config: parsedConfig,
+          byesPerRound,
+        });
       }
 
-      // Auto-upgrade unplayed symmetric double round-robin 2nd legs to the asymmetric pattern
-      if (parsedConfig.format === 'double_round_robin') {
-        const pattern = parsedConfig.secondLegPattern || 'crescendo';
-        if (!parsedConfig.secondLegPattern) {
-          parsedConfig.secondLegPattern = pattern;
-        }
-        const { matches: updatedMatches, byesPerRound: updatedByes, updated } =
-          reorganizeUnplayedSecondLegAsymmetric(matches, updatedTeams, byesPerRound, pattern);
-        if (updated) {
-          matches = updatedMatches;
-          byesPerRound = updatedByes;
-        }
-      }
-
-      const cleanState: StoredState = {
+      return {
         teams: updatedTeams,
         matches,
         config: parsedConfig,
         byesPerRound,
       };
-      saveTournamentState(cleanState);
-      return cleanState;
     }
   } catch (err) {
     console.error('Error loading tournament state from localStorage:', err);

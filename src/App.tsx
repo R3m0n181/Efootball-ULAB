@@ -12,6 +12,7 @@ import {
   reorganizeUnplayedSecondLegAsymmetric,
   realignSecondLegSchedule,
   generateRoundRobinSchedule,
+  rebuildSchedulePreservingCompleted,
   SECOND_LEG_PATTERNS_METADATA,
 } from './utils/scheduler';
 import {
@@ -124,23 +125,27 @@ export default function App() {
           : cleanedTeams.length;
 
         const hadPsg = cloudState.teams.length !== cleanedTeams.length || cloudState.matches.length !== cleanedMatches.length;
-        const hasCompletedMatches = cleanedMatches.some((m) => m.status === 'completed');
+        const pattern = cloudState.config.secondLegPattern || 'crescendo';
 
-        if (hadPsg && !hasCompletedMatches) {
-          const pattern = cloudState.config.secondLegPattern || 'crescendo';
-          const fresh = generateRoundRobinSchedule(cleanedTeams, isDouble, pattern);
-          cleanedMatches = fresh.matches;
-          cleanedByes = fresh.byesPerRound;
+        const needsRebuild =
+          hadPsg ||
+          cleanedMatches.length !== (isDouble ? (cleanedTeams.length % 2 === 0 ? (cleanedTeams.length - 1) * cleanedTeams.length : cleanedTeams.length * (cleanedTeams.length - 1)) : expectedTotalRounds * Math.floor(cleanedTeams.length / 2)) ||
+          cleanedMatches.some((m) => m.round > 38 || (m.homeTeamId === 'team-7' || m.awayTeamId === 'team-7'));
+
+        if (needsRebuild) {
+          const rebuilt = rebuildSchedulePreservingCompleted(cleanedMatches, cleanedTeams, isDouble, pattern);
+          cleanedMatches = rebuilt.matches;
+          cleanedByes = rebuilt.byesPerRound;
         }
 
         const cleanedConfig: TournamentConfig = {
           ...cloudState.config,
           totalRounds: expectedTotalRounds,
+          secondLegPattern: pattern,
         };
 
         // If double round-robin and unplayed 2nd leg is symmetric, seamlessly upgrade to asymmetric schedule
         if (cleanedConfig.format === 'double_round_robin') {
-          const pattern = cleanedConfig.secondLegPattern || 'crescendo';
           const { matches: upgradedMatches, byesPerRound: upgradedByes, updated } =
             reorganizeUnplayedSecondLegAsymmetric(
               cleanedMatches,
@@ -148,13 +153,10 @@ export default function App() {
               cleanedByes,
               pattern
             );
-          if (updated || hadPsg) {
+          if (updated || hadPsg || needsRebuild) {
             const upgradedState = {
               teams: cleanedTeams,
-              config: {
-                ...cleanedConfig,
-                secondLegPattern: pattern,
-              },
+              config: cleanedConfig,
               matches: upgradedMatches,
               byesPerRound: upgradedByes,
             };
@@ -173,7 +175,7 @@ export default function App() {
         };
         setTournamentState(finalState);
         setIsCloudSynced(true);
-        if (hadPsg) {
+        if (hadPsg || needsRebuild) {
           saveLeagueStateToCloud(finalState).catch(console.error);
         }
       },

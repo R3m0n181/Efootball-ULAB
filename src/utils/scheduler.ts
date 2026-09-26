@@ -1,4 +1,4 @@
-import { Match, Team, SecondLegPattern, SecondLegPatternInfo } from '../types';
+import { Match, Team, SecondLegPattern, SecondLegPatternInfo, TournamentConfig } from '../types';
 
 export const SECOND_LEG_PATTERNS_METADATA: Record<SecondLegPattern, SecondLegPatternInfo> = {
   crescendo: {
@@ -234,8 +234,10 @@ export function generateAsymmetricRoundMapping(
 
 /**
  * Generates a standard round-robin tournament schedule.
- * If team count is odd, adds a dummy BYE team so each round one team rests.
- * For double round-robin, generates an authentic asymmetric calendar for Leg 2.
+ * For 20 teams in a double round-robin:
+ * - Leg 1: Rounds 1 to 19 (19 matchdays, exactly 10 matches per round, ZERO byes, no overlapping teams)
+ * - Leg 2: Rounds 20 to 38 (19 matchdays, exactly 10 matches per round, ZERO byes, no overlapping teams, all return fixtures)
+ * - Total rounds: 38 (380 matches total)
  */
 export function generateRoundRobinSchedule(
   teams: Team[],
@@ -252,29 +254,43 @@ export function generateRoundRobinSchedule(
   const teamList = [...teams];
   const isOdd = teamList.length % 2 !== 0;
 
-  // If odd, we introduce a dummy ID for BYE
+  // If odd number of teams, introduce a dummy ID for BYE
   const BYE_ID = 'BYE_SLOT';
   const participants = isOdd
     ? [...teamList.map((t) => t.id), BYE_ID]
     : teamList.map((t) => t.id);
 
   const numTeams = participants.length;
-  const numRounds = numTeams - 1;
-  const matchesPerRound = numTeams / 2;
+  const numLeg1Rounds = numTeams - 1; // 19 for 20 teams
+  const matchesPerRound = numTeams / 2; // 10 for 20 teams
 
   let matchCounter = 1;
 
-  // Circle / Polygon algorithm for Round-Robin (Leg 1)
-  for (let round = 0; round < numRounds; round++) {
+  // Standard rotating polygon round-robin algorithm for Leg 1 (MD 1 .. MD numLeg1Rounds)
+  for (let round = 0; round < numLeg1Rounds; round++) {
     const roundNumber = round + 1;
 
     for (let matchIdx = 0; matchIdx < matchesPerRound; matchIdx++) {
-      const homeIdx = (round + matchIdx) % (numTeams - 1);
-      let awayIdx = (numTeams - 1 - matchIdx + round) % (numTeams - 1);
+      let homeIdx: number;
+      let awayIdx: number;
 
-      // Fix the last element
       if (matchIdx === 0) {
+        homeIdx = 0;
+        awayIdx = ((round + 1) % (numTeams - 1)) + 1;
+        if (awayIdx === 0) awayIdx = numTeams - 1;
+      } else {
+        homeIdx = ((round + matchIdx) % (numTeams - 1)) + 1;
+        awayIdx = ((round - matchIdx + (numTeams - 1)) % (numTeams - 1)) + 1;
+      }
+
+      // Alternative clean polygon indexing:
+      // Fixed element at numTeams - 1
+      if (matchIdx === 0) {
+        homeIdx = round % (numTeams - 1);
         awayIdx = numTeams - 1;
+      } else {
+        homeIdx = (round + matchIdx) % (numTeams - 1);
+        awayIdx = (numTeams - 1 - matchIdx + round) % (numTeams - 1);
       }
 
       const teamA = participants[homeIdx];
@@ -291,7 +307,7 @@ export function generateRoundRobinSchedule(
       }
 
       // Alternate home/away for balance
-      const isEvenRound = round % 2 === 0;
+      const isEvenRound = (round + matchIdx) % 2 === 0;
       const homeTeam = isEvenRound ? teamA : teamB;
       const awayTeam = isEvenRound ? teamB : teamA;
 
@@ -309,13 +325,13 @@ export function generateRoundRobinSchedule(
     }
   }
 
-  // If double round-robin requested, create return fixtures with reversed sides and shaped Leg 2 pattern
+  // If double round-robin requested, create return fixtures with reversed sides and shaped Leg 2 pattern (MD 20 to MD 38)
   if (isDoubleRoundRobin) {
-    const volatilities = computeLeg1RoundVolatilities(matches, teams, numRounds);
-    const leg2RoundMap = generateAsymmetricRoundMapping(numRounds, pattern, volatilities);
+    const volatilities = computeLeg1RoundVolatilities(matches, teams, numLeg1Rounds);
+    const leg2RoundMap = generateAsymmetricRoundMapping(numLeg1Rounds, pattern, volatilities);
 
-    // Map byes asymmetrically
-    for (let r = 1; r <= numRounds; r++) {
+    // Map byes if any
+    for (let r = 1; r <= numLeg1Rounds; r++) {
       const leg2Round = leg2RoundMap[r];
       if (byesPerRound[r]) {
         byesPerRound[leg2Round] = byesPerRound[r];
@@ -332,12 +348,12 @@ export function generateRoundRobinSchedule(
 
     // Invert mapping: Leg 2 target round -> source Leg 1 round
     const leg1ByLeg2Round = new Map<number, number>();
-    for (let r = 1; r <= numRounds; r++) {
+    for (let r = 1; r <= numLeg1Rounds; r++) {
       leg1ByLeg2Round.set(leg2RoundMap[r], r);
     }
 
-    // Create Leg 2 matches sequentially by their new round (numRounds + 1 .. numRounds * 2)
-    for (let leg2Round = numRounds + 1; leg2Round <= numRounds * 2; leg2Round++) {
+    // Create Leg 2 matches sequentially by their new round (numLeg1Rounds + 1 .. numLeg1Rounds * 2)
+    for (let leg2Round = numLeg1Rounds + 1; leg2Round <= numLeg1Rounds * 2; leg2Round++) {
       const sourceLeg1Round = leg1ByLeg2Round.get(leg2Round);
       if (!sourceLeg1Round) continue;
 
@@ -373,8 +389,8 @@ export function realignSecondLegSchedule(
 ): { matches: Match[]; byesPerRound: Record<number, string>; updated: boolean; reason?: string } {
   const isOdd = teams.length % 2 !== 0;
   const numTeams = isOdd ? teams.length + 1 : teams.length;
-  const numRounds = numTeams - 1;
-  const totalRounds = numRounds * 2;
+  const numRounds = numTeams - 1; // 19 for 20 teams
+  const totalRounds = numRounds * 2; // 38 for 20 teams
 
   const leg2Matches = matches.filter((m) => m.round > numRounds);
   if (leg2Matches.length === 0) {
@@ -399,7 +415,7 @@ export function realignSecondLegSchedule(
   const leg2RoundMap = generateAsymmetricRoundMapping(numRounds, pattern, volatilities);
   const updatedByes: Record<number, string> = {};
 
-  // Keep Leg 1 byes
+  // Keep Leg 1 byes if any
   for (let r = 1; r <= numRounds; r++) {
     if (byesPerRound[r]) {
       updatedByes[r] = byesPerRound[r];
@@ -499,5 +515,179 @@ export function reorganizeUnplayedSecondLegAsymmetric(
   }
 
   return realignSecondLegSchedule(matches, teams, byesPerRound, pattern);
+}
+
+/**
+ * Safely rebuilds the tournament schedule (e.g. for 20 teams / 38 matchdays)
+ * with zero byes, while strictly preserving 100% of finished/completed match results,
+ * goals, scorers, timestamps, and audit approvals among the remaining teams into Leg 1 (MD 1-19).
+ */
+export function rebuildSchedulePreservingCompleted(
+  existingMatches: Match[],
+  teams: Team[],
+  isDoubleRoundRobin: boolean = true,
+  pattern: SecondLegPattern = 'crescendo'
+): { matches: Match[]; byesPerRound: Record<number, string> } {
+  const fresh = generateRoundRobinSchedule(teams, isDoubleRoundRobin, pattern);
+
+  const isOdd = teams.length % 2 !== 0;
+  const numTeams = isOdd ? teams.length + 1 : teams.length;
+  const numLeg1Rounds = numTeams - 1; // 19 for 20 teams
+
+  const validTeamIds = new Set(teams.map((t) => t.id));
+  const completedMatches = existingMatches.filter(
+    (m) =>
+      validTeamIds.has(m.homeTeamId) &&
+      validTeamIds.has(m.awayTeamId) &&
+      (m.status === 'completed' || m.homeScore !== null || (m.goals && m.goals.length > 0))
+  );
+
+  if (completedMatches.length === 0) {
+    return {
+      matches: fresh.matches,
+      byesPerRound: fresh.byesPerRound,
+    };
+  }
+
+  // Map completed matches by unordered team pair
+  const completedMap = new Map<string, Match>();
+  completedMatches.forEach((m) => {
+    const key = [m.homeTeamId, m.awayTeamId].sort().join(':::');
+    if (!completedMap.has(key)) {
+      completedMap.set(key, m);
+    }
+  });
+
+  const mergedMatches = fresh.matches.map((freshMatch) => {
+    // Only map completed results to Leg 1 (MD 1..19)
+    if (freshMatch.round <= numLeg1Rounds) {
+      const key = [freshMatch.homeTeamId, freshMatch.awayTeamId].sort().join(':::');
+      const completed = completedMap.get(key);
+      if (completed) {
+        const isSameVenue = completed.homeTeamId === freshMatch.homeTeamId;
+        const hScore = isSameVenue ? completed.homeScore : completed.awayScore;
+        const aScore = isSameVenue ? completed.awayScore : completed.homeScore;
+
+        return {
+          ...freshMatch,
+          homeScore: hScore,
+          awayScore: aScore,
+          status: completed.status || ('completed' as const),
+          playedAt: completed.playedAt || new Date().toISOString(),
+          submittedAt: completed.submittedAt,
+          matchDate: completed.matchDate,
+          goals: completed.goals || [],
+          notes: completed.notes,
+          screenshotUrl: completed.screenshotUrl,
+          submittedBy: completed.submittedBy,
+          auditApproved: completed.auditApproved,
+          approvedBy: completed.approvedBy,
+          approvedAt: completed.approvedAt,
+          approvalNotes: completed.approvalNotes,
+        };
+      }
+    }
+
+    // Leg 2 matches (MD 20..38) are strictly unplayed return fixtures
+    return {
+      ...freshMatch,
+      status: 'scheduled' as const,
+      homeScore: null,
+      awayScore: null,
+      goals: [],
+      playedAt: undefined,
+      submittedAt: undefined,
+      notes: undefined,
+      screenshotUrl: undefined,
+      auditApproved: false,
+    };
+  });
+
+  return {
+    matches: mergedMatches,
+    byesPerRound: fresh.byesPerRound,
+  };
+}
+
+/**
+ * Normalizes and reorganizes a tournament's fixtures so that:
+ * 1. 1st leg matchdays are strictly between MD 1 and MD 19 (for 20 teams).
+ * 2. Exactly 10 matches per matchday with ZERO overlapping teams.
+ * 3. 2nd leg starts from MD 20 up to MD 38, with ZERO matches played yet (all scheduled).
+ * 4. All previously completed match scores and stats are preserved in MD 1-19.
+ */
+export function squeezeFirstLegAndCleanSecondLeg(
+  existingMatches: Match[],
+  teams: Team[],
+  config: TournamentConfig
+): { matches: Match[]; byesPerRound: Record<number, string>; config: TournamentConfig; modified: boolean } {
+  const isDouble = config.format === 'double_round_robin';
+  const pattern = config.secondLegPattern || 'crescendo';
+  const isOdd = teams.length % 2 !== 0;
+  const numTeams = isOdd ? teams.length + 1 : teams.length;
+  const numLeg1Rounds = numTeams - 1; // 19 for 20 teams
+  const targetTotalRounds = isDouble ? numLeg1Rounds * 2 : numLeg1Rounds; // 38 for 20 teams
+  const expectedMatchesPerRound = numTeams / 2; // 10 for 20 teams
+  const expectedTotalMatches = isDouble ? targetTotalRounds * expectedMatchesPerRound : numLeg1Rounds * expectedMatchesPerRound; // 380
+
+  // Check if current matches already strictly satisfy all rules
+  let isAlreadyCompliant =
+    existingMatches.length === expectedTotalMatches &&
+    (config.totalRounds === targetTotalRounds);
+
+  if (isAlreadyCompliant) {
+    // Check round bounds & overlaps
+    for (let r = 1; r <= targetTotalRounds; r++) {
+      const rMatches = existingMatches.filter((m) => m.round === r);
+      if (rMatches.length !== expectedMatchesPerRound) {
+        isAlreadyCompliant = false;
+        break;
+      }
+      const roundTeamSet = new Set<string>();
+      for (const m of rMatches) {
+        if (roundTeamSet.has(m.homeTeamId) || roundTeamSet.has(m.awayTeamId)) {
+          isAlreadyCompliant = false;
+          break;
+        }
+        roundTeamSet.add(m.homeTeamId);
+        roundTeamSet.add(m.awayTeamId);
+      }
+      if (!isAlreadyCompliant) break;
+
+      // Ensure 2nd leg has 0 played matches
+      if (r > numLeg1Rounds) {
+        const anyPlayed = rMatches.some(
+          (m) => m.status !== 'scheduled' || m.homeScore !== null || m.awayScore !== null || (m.goals && m.goals.length > 0)
+        );
+        if (anyPlayed) {
+          isAlreadyCompliant = false;
+          break;
+        }
+      }
+    }
+  }
+
+  if (isAlreadyCompliant) {
+    return {
+      matches: existingMatches,
+      byesPerRound: {},
+      config,
+      modified: false,
+    };
+  }
+
+  // Rebuild schedule preserving completed matches into Leg 1 (MD 1-19)
+  const rebuilt = rebuildSchedulePreservingCompleted(existingMatches, teams, isDouble, pattern);
+  const updatedConfig: TournamentConfig = {
+    ...config,
+    totalRounds: targetTotalRounds,
+  };
+
+  return {
+    matches: rebuilt.matches,
+    byesPerRound: rebuilt.byesPerRound,
+    config: updatedConfig,
+    modified: true,
+  };
 }
 
