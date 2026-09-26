@@ -724,22 +724,22 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
               </div>
               <div>
                 <h4 className="text-xs font-bold text-white uppercase tracking-wider">Tournament Format</h4>
-                <p className="text-[10px] text-slate-400">21 Teams • Double Round-Robin</p>
+                <p className="text-[10px] text-slate-400">{teams ? teams.length : 20} Teams • Double Round-Robin</p>
               </div>
             </div>
 
             <div className="space-y-1.5 text-xs text-slate-300">
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Total Matchdays:</span>
-                <span className="font-semibold text-white font-mono">42 Matchdays</span>
+                <span className="font-semibold text-white font-mono">{config?.totalRounds || (teams ? (teams.length % 2 === 0 ? (teams.length - 1) * 2 : teams.length * 2) : 38)} Matchdays</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Fixtures per Club:</span>
-                <span className="font-semibold text-white font-mono">40 Matches (20 H / 20 A)</span>
+                <span className="font-semibold text-white font-mono">{teams ? (teams.length % 2 === 0 ? (teams.length - 1) * 2 : (teams.length - 1) * 2) : 38} Matches ({teams ? (teams.length % 2 === 0 ? teams.length - 1 : teams.length - 1) : 19} H / {teams ? (teams.length % 2 === 0 ? teams.length - 1 : teams.length - 1) : 19} A)</span>
               </div>
               <div className="flex items-center justify-between py-1 border-b border-slate-800/60">
                 <span className="text-slate-400">Bye Matchdays:</span>
-                <span className="font-semibold text-slate-300 font-mono">2 Bye Rounds / Team</span>
+                <span className="font-semibold text-slate-300 font-mono">{teams && teams.length % 2 !== 0 ? '2 Bye Rounds / Team' : '0 (Zero Byes)'}</span>
               </div>
               <div className="flex items-center justify-between py-1">
                 <span className="text-slate-400">Points System:</span>

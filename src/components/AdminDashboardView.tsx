@@ -9,6 +9,8 @@ import {
   Camera,
   ExternalLink,
   Edit3,
+  Trash2,
+  RotateCcw,
   Sparkles,
   Trophy,
   Activity,
@@ -73,6 +75,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onEditMatch,
   onViewMatchDetail,
   onSelectTeam,
+  onResetMatchScore,
   onOpenSubmitModal,
   onApproveMatch,
   onRevokeApproval,
@@ -89,6 +92,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [viewLayout, setViewLayout] = useState<'timeline' | 'flat'>('timeline');
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'round-asc' | 'round-desc' | 'goals-desc' | 'team-asc' | 'team-desc'>('recent');
   const [previewScreenshotUrl, setPreviewScreenshotUrl] = useState<{ url: string; matchTitle: string; score: string } | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
   const [copiedAuditText, setCopiedAuditText] = useState(false);
   const [adminSubTab, setAdminSubTab] = useState<'pacing' | 'ledger' | 'fairplay' | 'reports'>('pacing');
   const [proofsMap, setProofsMap] = useState<Map<string, string>>(() => new Map());
@@ -1521,6 +1525,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 </button>
                               )}
 
+                              {/* Admin Direct Delete / Reset to Scheduled */}
+                              {adminUser && onResetMatchScore && (
+                                <button
+                                  onClick={() => setMatchToDelete(match)}
+                                  className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-500/40 rounded-lg text-xs transition cursor-pointer flex items-center justify-center"
+                                  title="Delete submission (Reset match to scheduled)"
+                                  aria-label="Delete match submission and reset to scheduled"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
 
                             </div>
                           </div>
@@ -1710,6 +1726,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             title="Edit score & details"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* Admin Direct Delete / Reset to Scheduled */}
+                        {adminUser && onResetMatchScore && (
+                          <button
+                            onClick={() => setMatchToDelete(match)}
+                            className="p-1.5 bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-200 border border-rose-500/40 rounded-lg text-xs transition cursor-pointer flex items-center justify-center"
+                            title="Delete submission (Reset match to scheduled)"
+                            aria-label="Delete match submission and reset to scheduled"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         )}
 
@@ -2045,6 +2073,116 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 <span>Open original</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Submission & Reset to Scheduled Confirmation Modal */}
+      {matchToDelete && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setMatchToDelete(null)}
+        >
+          <div
+            className="bg-[#0f1219] border border-rose-500/40 rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white">Delete Match Submission</h4>
+                  <p className="text-[11px] text-slate-400">Reset fixture back to scheduled status</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMatchToDelete(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Fixture Summary Card */}
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3.5 space-y-2">
+              <div className="flex items-center justify-between text-[11px] text-slate-400 border-b border-slate-800/80 pb-1.5 font-mono">
+                <span>Matchday {matchToDelete.round}</span>
+                <span>Match #{matchToDelete.matchNumber}</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-3 pt-1">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {teamMap.get(matchToDelete.homeTeamId) && (
+                    <TeamLogo team={teamMap.get(matchToDelete.homeTeamId)!} size="xs" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">
+                      {teamMap.get(matchToDelete.homeTeamId)?.clubName}
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate">
+                      {teamMap.get(matchToDelete.homeTeamId)?.managerName}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-2.5 py-1 bg-slate-900 border border-slate-700 rounded-lg text-xs font-mono font-bold text-emerald-400 shrink-0">
+                  {matchToDelete.homeScore ?? 0} - {matchToDelete.awayScore ?? 0}
+                </div>
+
+                <div className="flex items-center gap-2 min-w-0 flex-1 justify-end text-right">
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate">
+                      {teamMap.get(matchToDelete.awayTeamId)?.clubName}
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate">
+                      {teamMap.get(matchToDelete.awayTeamId)?.managerName}
+                    </div>
+                  </div>
+                  {teamMap.get(matchToDelete.awayTeamId) && (
+                    <TeamLogo team={teamMap.get(matchToDelete.awayTeamId)!} size="xs" />
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation & Impact Alert */}
+            <div className="bg-rose-950/30 border border-rose-500/30 rounded-xl p-3 text-xs text-rose-200/90 space-y-1">
+              <p className="font-semibold flex items-center gap-1 text-rose-300">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>Impact on Tournament:</span>
+              </p>
+              <ul className="list-disc list-inside space-y-0.5 text-[11px] text-rose-300/80 leading-relaxed pl-1">
+                <li>Removes the recorded scoreline, goals, and screenshot proof.</li>
+                <li>Resets status from <strong>completed</strong> back to <strong>scheduled</strong>.</li>
+                <li>Points, goals, and league standings will automatically recalculate.</li>
+              </ul>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setMatchToDelete(null)}
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (matchToDelete && onResetMatchScore) {
+                    onResetMatchScore(matchToDelete.id);
+                  }
+                  setMatchToDelete(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-rose-950/50 cursor-pointer active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete &amp; Reset to Scheduled</span>
+              </button>
             </div>
           </div>
         </div>

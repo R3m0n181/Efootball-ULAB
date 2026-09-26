@@ -325,6 +325,12 @@ export default function App() {
         submittedAt: undefined,
         submittedBy: undefined,
         screenshotUrl: undefined,
+        goals: [],
+        notes: undefined,
+        auditApproved: false,
+        approvedBy: undefined,
+        approvedAt: undefined,
+        approvalNotes: undefined,
       };
 
       const newMatches = matches.map((m) => (m.id === matchId ? resetMatch : m));
@@ -338,7 +344,7 @@ export default function App() {
       } catch (err) {
         console.error('Failed to sync match reset to Firestore:', err);
       }
-    }, 'Admin authentication is required to reset match results.');
+    }, 'Admin authentication is required to delete match submissions and reset them to scheduled.');
   };
 
   const handleApproveMatch = (matchId: string, notes?: string) => {
