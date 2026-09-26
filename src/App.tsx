@@ -11,6 +11,7 @@ import {
 import {
   reorganizeUnplayedSecondLegAsymmetric,
   realignSecondLegSchedule,
+  generateRoundRobinSchedule,
   SECOND_LEG_PATTERNS_METADATA,
 } from './utils/scheduler';
 import {
@@ -106,21 +107,52 @@ export default function App() {
 
     const unsubscribe = subscribeToLeagueState(
       (cloudState) => {
-        // If double round-robin and unplayed 2nd leg is symmetric, seamlessly upgrade to asymmetric schedule
-        if (cloudState.config.format === 'double_round_robin') {
+        let cleanedTeams = cloudState.teams.filter(
+          (t) => t.id !== 'team-7' && !t.clubName.toLowerCase().includes('paris saint-germain') && t.shortCode !== 'PSG'
+        );
+        let cleanedMatches = cloudState.matches.filter(
+          (m) => m.homeTeamId !== 'team-7' && m.awayTeamId !== 'team-7'
+        );
+        let cleanedByes = cloudState.byesPerRound || {};
+        const isDouble = cloudState.config.format === 'double_round_robin';
+        const expectedTotalRounds = isDouble
+          ? cleanedTeams.length % 2 === 0
+            ? (cleanedTeams.length - 1) * 2
+            : cleanedTeams.length * 2
+          : cleanedTeams.length % 2 === 0
+          ? cleanedTeams.length - 1
+          : cleanedTeams.length;
+
+        const hadPsg = cloudState.teams.length !== cleanedTeams.length || cloudState.matches.length !== cleanedMatches.length;
+        const hasCompletedMatches = cleanedMatches.some((m) => m.status === 'completed');
+
+        if (hadPsg && !hasCompletedMatches) {
           const pattern = cloudState.config.secondLegPattern || 'crescendo';
+          const fresh = generateRoundRobinSchedule(cleanedTeams, isDouble, pattern);
+          cleanedMatches = fresh.matches;
+          cleanedByes = fresh.byesPerRound;
+        }
+
+        const cleanedConfig: TournamentConfig = {
+          ...cloudState.config,
+          totalRounds: expectedTotalRounds,
+        };
+
+        // If double round-robin and unplayed 2nd leg is symmetric, seamlessly upgrade to asymmetric schedule
+        if (cleanedConfig.format === 'double_round_robin') {
+          const pattern = cleanedConfig.secondLegPattern || 'crescendo';
           const { matches: upgradedMatches, byesPerRound: upgradedByes, updated } =
             reorganizeUnplayedSecondLegAsymmetric(
-              cloudState.matches,
-              cloudState.teams,
-              cloudState.byesPerRound || {},
+              cleanedMatches,
+              cleanedTeams,
+              cleanedByes,
               pattern
             );
-          if (updated) {
+          if (updated || hadPsg) {
             const upgradedState = {
-              ...cloudState,
+              teams: cleanedTeams,
               config: {
-                ...cloudState.config,
+                ...cleanedConfig,
                 secondLegPattern: pattern,
               },
               matches: upgradedMatches,
@@ -132,8 +164,18 @@ export default function App() {
             return;
           }
         }
-        setTournamentState(cloudState);
+
+        const finalState = {
+          teams: cleanedTeams,
+          matches: cleanedMatches,
+          config: cleanedConfig,
+          byesPerRound: cleanedByes,
+        };
+        setTournamentState(finalState);
         setIsCloudSynced(true);
+        if (hadPsg) {
+          saveLeagueStateToCloud(finalState).catch(console.error);
+        }
       },
       (err) => {
         console.warn('Firestore real-time connection notice, local cache active:', err);

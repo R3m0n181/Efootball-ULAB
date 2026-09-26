@@ -56,15 +56,6 @@ export const INITIAL_TEAMS: Team[] = [
     secondaryColor: '#A50044',
   },
   {
-    id: 'team-7',
-    managerName: 'Safin',
-    clubName: 'Paris Saint-Germain',
-    shortCode: 'PSG',
-    logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a7/Paris_Saint-Germain_F.C..svg/512px-Paris_Saint-Germain_F.C..svg.png',
-    color: '#004170',
-    secondaryColor: '#DA291C',
-  },
-  {
     id: 'team-8',
     managerName: 'Shihab',
     clubName: 'FC Porto',
@@ -201,7 +192,7 @@ export const INITIAL_CONFIG: TournamentConfig = {
   pointsForDraw: 1,
   pointsForLoss: 0,
   currentRound: 1,
-  totalRounds: 42,
+  totalRounds: 38,
   topQualifierSpots: 4, // Champions league / playoffs
   europaSpots: 4, // Europa spots (5th to 8th)
 };

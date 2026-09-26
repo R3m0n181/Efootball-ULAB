@@ -24,7 +24,12 @@ export function loadTournamentState(): StoredState {
     const rawByes = localStorage.getItem(STORAGE_KEYS.BYES);
 
     if (rawTeams && rawMatches && rawConfig) {
-      const parsedTeams: Team[] = JSON.parse(rawTeams);
+      let parsedTeams: Team[] = JSON.parse(rawTeams);
+      // Remove any withdrawn teams (e.g. team-7 PSG)
+      parsedTeams = parsedTeams.filter(
+        (t) => t.id !== 'team-7' && !t.clubName.toLowerCase().includes('paris saint-germain') && t.shortCode !== 'PSG'
+      );
+
       // Merge official logos and colors from INITIAL_TEAMS map
       const initialMap = new Map<string, Team>();
       INITIAL_TEAMS.forEach((t) => {
@@ -46,8 +51,39 @@ export function loadTournamentState(): StoredState {
       });
 
       let matches: Match[] = JSON.parse(rawMatches);
+      // Filter out any matches involving team-7 / PSG
+      const hadWithdrawnMatches = matches.some(
+        (m) => m.homeTeamId === 'team-7' || m.awayTeamId === 'team-7'
+      );
+      if (hadWithdrawnMatches) {
+        matches = matches.filter(
+          (m) => m.homeTeamId !== 'team-7' && m.awayTeamId !== 'team-7'
+        );
+      }
+
       let byesPerRound: Record<number, string> = rawByes ? JSON.parse(rawByes) : {};
       const parsedConfig: TournamentConfig = JSON.parse(rawConfig);
+
+      // Recalculate total rounds for 20 teams
+      const isDouble = parsedConfig.format === 'double_round_robin';
+      const expectedTotalRounds = isDouble
+        ? updatedTeams.length % 2 === 0
+          ? (updatedTeams.length - 1) * 2
+          : updatedTeams.length * 2
+        : updatedTeams.length % 2 === 0
+        ? updatedTeams.length - 1
+        : updatedTeams.length;
+
+      parsedConfig.totalRounds = expectedTotalRounds;
+
+      // If matches were pruned or schedule was for 21 teams (or has no completed matches), regenerate pristine schedule
+      const hasCompletedMatches = matches.some((m) => m.status === 'completed');
+      if (hadWithdrawnMatches || matches.length === 0 || (!hasCompletedMatches && matches.length !== expectedTotalRounds * (updatedTeams.length / 2))) {
+        const pattern = parsedConfig.secondLegPattern || 'crescendo';
+        const fresh = generateRoundRobinSchedule(updatedTeams, isDouble, pattern);
+        matches = fresh.matches;
+        byesPerRound = fresh.byesPerRound;
+      }
 
       // Auto-upgrade unplayed symmetric double round-robin 2nd legs to the asymmetric pattern
       if (parsedConfig.format === 'double_round_robin') {
@@ -60,21 +96,17 @@ export function loadTournamentState(): StoredState {
         if (updated) {
           matches = updatedMatches;
           byesPerRound = updatedByes;
-          saveTournamentState({
-            teams: updatedTeams,
-            matches,
-            config: parsedConfig,
-            byesPerRound,
-          });
         }
       }
 
-      return {
+      const cleanState: StoredState = {
         teams: updatedTeams,
         matches,
         config: parsedConfig,
         byesPerRound,
       };
+      saveTournamentState(cleanState);
+      return cleanState;
     }
   } catch (err) {
     console.error('Error loading tournament state from localStorage:', err);

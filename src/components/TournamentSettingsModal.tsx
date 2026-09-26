@@ -60,13 +60,22 @@ export const TournamentSettingsModal: React.FC<TournamentSettingsModalProps> = (
   if (!isOpen) return null;
 
   const handleSave = () => {
-    const totalRounds = config.totalRounds || 42;
+    const isDouble = format === 'double_round_robin';
+    const computedTotalRounds = isDouble
+      ? teams.length % 2 === 0
+        ? (teams.length - 1) * 2
+        : teams.length * 2
+      : teams.length % 2 === 0
+      ? teams.length - 1
+      : teams.length;
+    const totalRounds = config.totalRounds || computedTotalRounds;
     const boundedRound = Math.max(1, Math.min(Number(currentRound) || 1, totalRounds));
     onSaveConfig({
       ...config,
       name,
       season,
       format,
+      totalRounds: computedTotalRounds,
       secondLegPattern,
       currentRound: boundedRound,
       pointsForWin: Number(pointsWin),
