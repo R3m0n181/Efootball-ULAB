@@ -612,34 +612,98 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const isDoubleLeg = config.format === 'double_round_robin' || matches.some((m) => m.round > numLeg1Rounds);
 
   const legProgressionStats = useMemo(() => {
+    // 1st Leg Calculations
     const leg1Matches = matches.filter((m) => m.round <= numLeg1Rounds);
     const leg1Total = leg1Matches.length;
-    const leg1Completed = leg1Matches.filter((m) => m.status === 'completed').length;
+    const leg1CompletedMatches = leg1Matches.filter(
+      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    );
+    const leg1Completed = leg1CompletedMatches.length;
     const leg1Pending = leg1Total - leg1Completed;
-    const leg1Percent = leg1Total > 0 ? Math.round((leg1Completed / leg1Total) * 100) : 0;
-    const leg1Goals = leg1Matches
-      .filter((m) => m.status === 'completed')
-      .reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
+    const leg1Percent = leg1Total > 0 ? ((leg1Completed / leg1Total) * 100).toFixed(1) : '0.0';
+    const leg1NumericPercent = leg1Total > 0 ? Math.round((leg1Completed / leg1Total) * 1000) / 10 : 0;
 
+    const leg1HomeGoals = leg1CompletedMatches.reduce((sum, m) => sum + (m.homeScore ?? 0), 0);
+    const leg1AwayGoals = leg1CompletedMatches.reduce((sum, m) => sum + (m.awayScore ?? 0), 0);
+    const leg1Goals = leg1HomeGoals + leg1AwayGoals;
+    const leg1AvgGoals = leg1Completed > 0 ? (leg1Goals / leg1Completed).toFixed(2) : '0.00';
+
+    const leg1HomeWins = leg1CompletedMatches.filter((m) => m.homeScore! > m.awayScore!).length;
+    const leg1AwayWins = leg1CompletedMatches.filter((m) => m.awayScore! > m.homeScore!).length;
+    const leg1Draws = leg1CompletedMatches.filter((m) => m.homeScore === m.awayScore).length;
+
+    const leg1WithProof = leg1CompletedMatches.filter((m) => !!getProofForMatch(m)).length;
+    const leg1ProofRate = leg1Completed > 0 ? ((leg1WithProof / leg1Completed) * 100).toFixed(1) : '100.0';
+
+    let leg1RoundsCompleted = 0;
+    let leg1RoundsInProgress = 0;
+    for (let r = 1; r <= numLeg1Rounds; r++) {
+      const rM = leg1Matches.filter((m) => m.round === r);
+      const rC = rM.filter((m) => m.status === 'completed' && m.homeScore !== null).length;
+      if (rM.length > 0 && rC === rM.length) leg1RoundsCompleted++;
+      else if (rC > 0) leg1RoundsInProgress++;
+    }
+
+    // 2nd Leg Calculations
     const leg2Matches = matches.filter((m) => m.round > numLeg1Rounds);
     const leg2Total = leg2Matches.length;
-    const leg2Completed = leg2Matches.filter((m) => m.status === 'completed').length;
+    const leg2CompletedMatches = leg2Matches.filter(
+      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    );
+    const leg2Completed = leg2CompletedMatches.length;
     const leg2Pending = leg2Total - leg2Completed;
-    const leg2Percent = leg2Total > 0 ? Math.round((leg2Completed / leg2Total) * 100) : 0;
-    const leg2Goals = leg2Matches
-      .filter((m) => m.status === 'completed')
-      .reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
+    const leg2Percent = leg2Total > 0 ? ((leg2Completed / leg2Total) * 100).toFixed(1) : '0.0';
+    const leg2NumericPercent = leg2Total > 0 ? Math.round((leg2Completed / leg2Total) * 1000) / 10 : 0;
+
+    const leg2HomeGoals = leg2CompletedMatches.reduce((sum, m) => sum + (m.homeScore ?? 0), 0);
+    const leg2AwayGoals = leg2CompletedMatches.reduce((sum, m) => sum + (m.awayScore ?? 0), 0);
+    const leg2Goals = leg2HomeGoals + leg2AwayGoals;
+    const leg2AvgGoals = leg2Completed > 0 ? (leg2Goals / leg2Completed).toFixed(2) : '0.00';
+
+    const leg2HomeWins = leg2CompletedMatches.filter((m) => m.homeScore! > m.awayScore!).length;
+    const leg2AwayWins = leg2CompletedMatches.filter((m) => m.awayScore! > m.homeScore!).length;
+    const leg2Draws = leg2CompletedMatches.filter((m) => m.homeScore === m.awayScore).length;
+
+    const leg2WithProof = leg2CompletedMatches.filter((m) => !!getProofForMatch(m)).length;
+    const leg2ProofRate = leg2Completed > 0 ? ((leg2WithProof / leg2Completed) * 100).toFixed(1) : '100.0';
+
+    const leg2RoundsTotal = Math.max(1, totalRounds - numLeg1Rounds);
+    let leg2RoundsCompleted = 0;
+    let leg2RoundsInProgress = 0;
+    for (let r = numLeg1Rounds + 1; r <= totalRounds; r++) {
+      const rM = leg2Matches.filter((m) => m.round === r);
+      const rC = rM.filter((m) => m.status === 'completed' && m.homeScore !== null).length;
+      if (rM.length > 0 && rC === rM.length) leg2RoundsCompleted++;
+      else if (rC > 0) leg2RoundsInProgress++;
+    }
+
+    const totalCompletedAll = leg1Completed + leg2Completed;
+    const totalMatchesAll = leg1Total + leg2Total;
+    const overallPercent = totalMatchesAll > 0 ? ((totalCompletedAll / totalMatchesAll) * 100).toFixed(1) : '0.0';
 
     return {
       numLeg1Rounds,
       totalRounds,
       isDoubleLeg,
+      overallPercent,
       leg1: {
         total: leg1Total,
         completed: leg1Completed,
         pending: leg1Pending,
         percent: leg1Percent,
+        numericPercent: leg1NumericPercent,
         goals: leg1Goals,
+        homeGoals: leg1HomeGoals,
+        awayGoals: leg1AwayGoals,
+        avgGoals: leg1AvgGoals,
+        homeWins: leg1HomeWins,
+        awayWins: leg1AwayWins,
+        draws: leg1Draws,
+        withProof: leg1WithProof,
+        proofRate: leg1ProofRate,
+        roundsTotal: numLeg1Rounds,
+        roundsCompleted: leg1RoundsCompleted,
+        roundsInProgress: leg1RoundsInProgress,
         startRound: 1,
         endRound: numLeg1Rounds,
       },
@@ -648,12 +712,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         completed: leg2Completed,
         pending: leg2Pending,
         percent: leg2Percent,
+        numericPercent: leg2NumericPercent,
         goals: leg2Goals,
+        homeGoals: leg2HomeGoals,
+        awayGoals: leg2AwayGoals,
+        avgGoals: leg2AvgGoals,
+        homeWins: leg2HomeWins,
+        awayWins: leg2AwayWins,
+        draws: leg2Draws,
+        withProof: leg2WithProof,
+        proofRate: leg2ProofRate,
+        roundsTotal: leg2RoundsTotal,
+        roundsCompleted: leg2RoundsCompleted,
+        roundsInProgress: leg2RoundsInProgress,
         startRound: numLeg1Rounds + 1,
         endRound: totalRounds,
       },
     };
-  }, [matches, numLeg1Rounds, totalRounds, isDoubleLeg]);
+  }, [matches, numLeg1Rounds, totalRounds, isDoubleLeg, proofsMap]);
 
   return (
     <div className="space-y-4">
@@ -821,177 +897,172 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
         </div>
 
-        {/* 1st & 2nd Leg Progression Stats Panel */}
+        {/* 1st & 2nd Leg Progression Stats Panel (Ultra-Compact Mobile-Optimized Layout) */}
         {legProgressionStats.isDoubleLeg && (
           <div
             id="admin-leg-progression-panel"
-            className="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-800/80"
+            className="mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t border-slate-800/80 space-y-2"
           >
-            {/* Header: Title, Description & Overall Pill */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-3">
-              <div className="flex items-start gap-2.5 min-w-0">
-                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0 mt-0.5 sm:mt-0">
-                  <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            {/* Header: Title & Total Pill */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0">
+                  <Layers className="w-3.5 h-3.5" />
                 </span>
-                <div className="min-w-0">
-                  <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
-                    Tournament Leg Progression Breakdown
-                  </h3>
-                  <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 leading-snug">
-                    Match completion rates for 1st Leg (MD 1–{legProgressionStats.numLeg1Rounds}) &amp; 2nd Leg (MD {legProgressionStats.numLeg1Rounds + 1}–{legProgressionStats.totalRounds}).
-                  </p>
-                </div>
-              </div>
-              <div className="self-start sm:self-center shrink-0">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/90 text-slate-300 border border-slate-700/70 text-[11px] sm:text-xs font-mono shadow-xs">
-                  <span className="text-slate-400">Total:</span>
-                  <strong className="text-emerald-400 font-bold">{completedCount}/{totalMatches}</strong>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-white font-semibold">{progressPercent}%</span>
+                <span className="text-xs font-bold text-white uppercase tracking-wider truncate">
+                  Tournament Leg Progression
                 </span>
               </div>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800/90 text-slate-300 border border-slate-700/70 text-[10px] sm:text-[11px] font-mono shrink-0 shadow-xs">
+                <span className="text-slate-400">Total:</span>
+                <strong className="text-emerald-400 font-bold">{completedCount}/{totalMatches}</strong>
+                <span className="text-slate-500">•</span>
+                <span className="text-white font-semibold">{legProgressionStats.overallPercent}%</span>
+              </span>
             </div>
 
-            {/* 2-Column Leg Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
-              {/* 1st Leg Progression Box */}
-              <div className="bg-[#141824] border border-emerald-500/30 hover:border-emerald-500/50 transition rounded-xl p-3 sm:p-3.5 relative overflow-hidden shadow-sm">
-                {/* Top Badge Row */}
-                <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px] uppercase tracking-wider">
-                      1st Leg Phase
+            {/* 2-Column High-Density Leg Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {/* 1st Leg Compact Box */}
+              <div className="bg-[#141824] border border-emerald-500/30 hover:border-emerald-500/50 transition rounded-lg p-2.5 space-y-1.5 shadow-xs">
+                {/* Line 1: Header + Count + Percentage */}
+                <div className="flex items-center justify-between gap-1.5 text-xs font-mono">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-black uppercase tracking-wider shrink-0">
+                      1st Leg
                     </span>
-                    <span className="text-[11px] sm:text-xs font-bold text-white font-mono">
+                    <span className="text-[11px] text-slate-400 font-semibold truncate">
                       MD {legProgressionStats.leg1.startRound}–{legProgressionStats.leg1.endRound}
                     </span>
+                    <span className="text-slate-600 hidden xs:inline">•</span>
+                    <span className="text-white font-bold text-[11px] shrink-0">
+                      {legProgressionStats.leg1.completed}/{legProgressionStats.leg1.total}
+                    </span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                      legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs font-black text-emerald-400">
+                      {legProgressionStats.leg1.percent}%
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                        legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
+                        legProgressionStats.leg1.total > 0
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : legProgressionStats.leg1.completed > 0
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
                       legProgressionStats.leg1.total > 0
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        ? '100%'
                         : legProgressionStats.leg1.completed > 0
-                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
-                  >
-                    {legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
-                    legProgressionStats.leg1.total > 0
-                      ? 'Completed (100%)'
-                      : legProgressionStats.leg1.completed > 0
-                      ? `In Progress (${legProgressionStats.leg1.percent}%)`
-                      : 'Scheduled (0%)'}
-                  </span>
-                </div>
-
-                {/* Match Counts & Percentage */}
-                <div className="flex items-baseline justify-between mt-1 mb-2">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-white font-mono">
-                      {legProgressionStats.leg1.completed}
-                    </span>
-                    <span className="text-[11px] sm:text-xs font-semibold text-slate-400 font-mono">
-                      / {legProgressionStats.leg1.total} played
+                        ? 'In Progress'
+                        : 'Scheduled'}
                     </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-emerald-400 font-mono">
-                    {legProgressionStats.leg1.percent}%
-                  </span>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2.5">
+                {/* Line 2: Progress Bar */}
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-emerald-500/30"
-                    style={{ width: `${legProgressionStats.leg1.percent}%` }}
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500 shadow-xs shadow-emerald-500/30"
+                    style={{ width: `${legProgressionStats.leg1.numericPercent}%` }}
                   />
                 </div>
 
-                {/* Sub-stats: Pending & Goals */}
-                <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 pt-2 border-t border-slate-800/70 font-mono gap-1.5">
-                  <span className="flex items-center gap-1 min-w-0 truncate">
-                    <Clock className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span className="truncate">
-                      <strong className="text-slate-200">{legProgressionStats.leg1.pending}</strong> pending
-                    </span>
+                {/* Line 3: High-Density Precision Stats Strip */}
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono gap-1 pt-0.5 border-t border-slate-800/60 flex-wrap">
+                  <span className="truncate">
+                    <strong className="text-slate-200">{legProgressionStats.leg1.roundsCompleted}/{legProgressionStats.leg1.roundsTotal}</strong> MDs
+                    {legProgressionStats.leg1.roundsInProgress > 0 && (
+                      <span className="text-amber-400 text-[9px] ml-0.5">({legProgressionStats.leg1.roundsInProgress} act)</span>
+                    )}
                   </span>
-                  <span className="flex items-center gap-1 text-slate-300 shrink-0">
-                    <Trophy className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span>
-                      <strong className="text-amber-300">{legProgressionStats.leg1.goals}</strong> goals
-                    </span>
+                  <span className="text-slate-600 hidden xs:inline">•</span>
+                  <span className="text-amber-300 font-semibold truncate">
+                    {legProgressionStats.leg1.goals} Goals <span className="text-slate-500 font-normal">({legProgressionStats.leg1.avgGoals}/g)</span>
+                  </span>
+                  <span className="text-slate-600 hidden sm:inline">•</span>
+                  <span className="text-slate-300 truncate">
+                    {legProgressionStats.leg1.homeWins}H-{legProgressionStats.leg1.draws}D-{legProgressionStats.leg1.awayWins}A
+                  </span>
+                  <span className="text-slate-600 hidden md:inline">•</span>
+                  <span className="text-cyan-300 text-[9px] truncate">
+                    {legProgressionStats.leg1.withProof} SS ({legProgressionStats.leg1.proofRate}%)
                   </span>
                 </div>
               </div>
 
-              {/* 2nd Leg Progression Box */}
-              <div className="bg-[#141824] border border-cyan-500/30 hover:border-cyan-500/50 transition rounded-xl p-3 sm:p-3.5 relative overflow-hidden shadow-sm">
-                {/* Top Badge Row */}
-                <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
-                  <div className="flex items-center gap-1.5">
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-[10px] uppercase tracking-wider">
-                      2nd Leg Phase (Return)
+              {/* 2nd Leg Compact Box */}
+              <div className="bg-[#141824] border border-cyan-500/30 hover:border-cyan-500/50 transition rounded-lg p-2.5 space-y-1.5 shadow-xs">
+                {/* Line 1: Header + Count + Percentage */}
+                <div className="flex items-center justify-between gap-1.5 text-xs font-mono">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-black uppercase tracking-wider shrink-0">
+                      2nd Leg
                     </span>
-                    <span className="text-[11px] sm:text-xs font-bold text-white font-mono">
+                    <span className="text-[11px] text-slate-400 font-semibold truncate">
                       MD {legProgressionStats.leg2.startRound}–{legProgressionStats.leg2.endRound}
                     </span>
+                    <span className="text-slate-600 hidden xs:inline">•</span>
+                    <span className="text-white font-bold text-[11px] shrink-0">
+                      {legProgressionStats.leg2.completed}/{legProgressionStats.leg2.total}
+                    </span>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
-                      legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className="text-xs font-black text-cyan-400">
+                      {legProgressionStats.leg2.percent}%
+                    </span>
+                    <span
+                      className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${
+                        legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
+                        legProgressionStats.leg2.total > 0
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : legProgressionStats.leg2.completed > 0
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      {legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
                       legProgressionStats.leg2.total > 0
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        ? '100%'
                         : legProgressionStats.leg2.completed > 0
-                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
-                        : 'bg-slate-800 text-slate-400 border-slate-700'
-                    }`}
-                  >
-                    {legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
-                    legProgressionStats.leg2.total > 0
-                      ? 'Completed (100%)'
-                      : legProgressionStats.leg2.completed > 0
-                      ? `In Progress (${legProgressionStats.leg2.percent}%)`
-                      : 'Scheduled (0%)'}
-                  </span>
-                </div>
-
-                {/* Match Counts & Percentage */}
-                <div className="flex items-baseline justify-between mt-1 mb-2">
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl sm:text-2xl font-black text-white font-mono">
-                      {legProgressionStats.leg2.completed}
-                    </span>
-                    <span className="text-[11px] sm:text-xs font-semibold text-slate-400 font-mono">
-                      / {legProgressionStats.leg2.total} played
+                        ? 'In Progress'
+                        : 'Scheduled'}
                     </span>
                   </div>
-                  <span className="text-xs sm:text-sm font-bold text-cyan-400 font-mono">
-                    {legProgressionStats.leg2.percent}%
-                  </span>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2.5">
+                {/* Line 2: Progress Bar */}
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
                   <div
-                    className="bg-gradient-to-r from-cyan-500 to-blue-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-cyan-500/30"
-                    style={{ width: `${legProgressionStats.leg2.percent}%` }}
+                    className="bg-gradient-to-r from-cyan-500 to-blue-400 h-full rounded-full transition-all duration-500 shadow-xs shadow-cyan-500/30"
+                    style={{ width: `${legProgressionStats.leg2.numericPercent}%` }}
                   />
                 </div>
 
-                {/* Sub-stats: Pending & Goals */}
-                <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 pt-2 border-t border-slate-800/70 font-mono gap-1.5">
-                  <span className="flex items-center gap-1 min-w-0 truncate">
-                    <Clock className="w-3 h-3 text-slate-500 shrink-0" />
-                    <span className="truncate">
-                      <strong className="text-slate-200">{legProgressionStats.leg2.pending}</strong> scheduled
-                    </span>
+                {/* Line 3: High-Density Precision Stats Strip */}
+                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono gap-1 pt-0.5 border-t border-slate-800/60 flex-wrap">
+                  <span className="truncate">
+                    <strong className="text-slate-200">{legProgressionStats.leg2.roundsCompleted}/{legProgressionStats.leg2.roundsTotal}</strong> MDs
+                    {legProgressionStats.leg2.roundsInProgress > 0 && (
+                      <span className="text-cyan-400 text-[9px] ml-0.5">({legProgressionStats.leg2.roundsInProgress} act)</span>
+                    )}
                   </span>
-                  <span className="flex items-center gap-1 text-slate-300 shrink-0">
-                    <Trophy className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span>
-                      <strong className="text-cyan-300">{legProgressionStats.leg2.goals}</strong> goals
-                    </span>
+                  <span className="text-slate-600 hidden xs:inline">•</span>
+                  <span className="text-cyan-300 font-semibold truncate">
+                    {legProgressionStats.leg2.goals} Goals <span className="text-slate-500 font-normal">({legProgressionStats.leg2.avgGoals}/g)</span>
+                  </span>
+                  <span className="text-slate-600 hidden sm:inline">•</span>
+                  <span className="text-slate-300 truncate">
+                    {legProgressionStats.leg2.homeWins}H-{legProgressionStats.leg2.draws}D-{legProgressionStats.leg2.awayWins}A
+                  </span>
+                  <span className="text-slate-600 hidden md:inline">•</span>
+                  <span className="text-slate-400 text-[9px] truncate">
+                    {legProgressionStats.leg2.pending} Left
                   </span>
                 </div>
               </div>

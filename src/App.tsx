@@ -768,25 +768,28 @@ export default function App() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-slate-800 bg-[#0a0c10] py-3.5 text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-2.5">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-2.5 text-center md:text-left">
+      <footer className="border-t border-slate-800 bg-[#0a0c10] py-3 text-xs text-slate-400">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 space-y-2">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-2 text-center md:text-left">
             {/* Precise Tournament Spec */}
             <div className="space-y-0.5">
-              <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap text-white font-medium text-xs">
+              <div className="flex items-center justify-center md:justify-start gap-1.5 sm:gap-2 flex-wrap text-white font-medium text-xs">
                 <span className="text-emerald-400 font-bold font-mono">eFootball Mobile</span>
                 <span className="text-slate-600">•</span>
-                <span>21 Participating Clubs</span>
+                <span>{teams.length} Participating Clubs</span>
                 <span className="text-slate-600">•</span>
-                <span>Double Round-Robin Format (42 Matchdays)</span>
+                <span>
+                  {config.format === 'single_round_robin' ? 'Single' : 'Double'} Round-Robin Format (
+                  {config.totalRounds || (teams.length > 1 ? (teams.length - 1) * 2 : 38)} Matchdays)
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400">
-                Official 420-fixture season (20 Home &amp; 20 Away matches per club) • Win = 3 Pts, Draw = 1 Pt, Loss = 0 Pts
+              <p className="text-[10px] sm:text-[11px] text-slate-400">
+                Official {summary.totalMatches}-fixture season • Win = 3 Pts, Draw = 1 Pt, Loss = 0 Pts
               </p>
             </div>
 
             {/* Quick Live Stats & Controls */}
-            <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end text-[11px]">
+            <div className="flex items-center gap-2 flex-wrap justify-center md:justify-end text-[10px] sm:text-[11px]">
               <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-slate-300">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
                 <span>
