@@ -897,7 +897,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
         </div>
 
-        {/* 1st & 2nd Leg Progression Stats Panel (Ultra-Compact Mobile-Optimized Layout) */}
+        {/* 1st & 2nd Leg Progression Stats Panel (2 Stats Per Row on Mobile, Remaining Count Included, SS Removed) */}
         {legProgressionStats.isDoubleLeg && (
           <div
             id="admin-leg-progression-panel"
@@ -918,13 +918,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 <strong className="text-emerald-400 font-bold">{completedCount}/{totalMatches}</strong>
                 <span className="text-slate-500">•</span>
                 <span className="text-white font-semibold">{legProgressionStats.overallPercent}%</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-amber-300 font-bold">{totalMatches - completedCount} Left</span>
               </span>
             </div>
 
             {/* 2-Column High-Density Leg Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
               {/* 1st Leg Compact Box */}
-              <div className="bg-[#141824] border border-emerald-500/30 hover:border-emerald-500/50 transition rounded-lg p-2.5 space-y-1.5 shadow-xs">
+              <div className="bg-[#141824] border border-emerald-500/30 hover:border-emerald-500/50 transition rounded-lg p-2.5 space-y-2 shadow-xs">
                 {/* Line 1: Header + Count + Percentage */}
                 <div className="flex items-center justify-between gap-1.5 text-xs font-mono">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -972,31 +974,52 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   />
                 </div>
 
-                {/* Line 3: High-Density Precision Stats Strip */}
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono gap-1 pt-0.5 border-t border-slate-800/60 flex-wrap">
-                  <span className="truncate">
-                    <strong className="text-slate-200">{legProgressionStats.leg1.roundsCompleted}/{legProgressionStats.leg1.roundsTotal}</strong> MDs
+                {/* Line 3: 2 Stats Per Row on Mobile (Grid with 2 columns) */}
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 pt-1 border-t border-slate-800/60 text-[10px] sm:text-[11px] font-mono">
+                  {/* Stat 1: Matchdays Completed */}
+                  <div className="flex items-center gap-1 min-w-0 text-slate-400 truncate">
+                    <span className="text-slate-500 shrink-0">MDs:</span>
+                    <strong className="text-slate-200 truncate">
+                      {legProgressionStats.leg1.roundsCompleted}/{legProgressionStats.leg1.roundsTotal}
+                    </strong>
                     {legProgressionStats.leg1.roundsInProgress > 0 && (
-                      <span className="text-amber-400 text-[9px] ml-0.5">({legProgressionStats.leg1.roundsInProgress} act)</span>
+                      <span className="text-amber-400 text-[9px] shrink-0">({legProgressionStats.leg1.roundsInProgress} act)</span>
                     )}
-                  </span>
-                  <span className="text-slate-600 hidden xs:inline">•</span>
-                  <span className="text-amber-300 font-semibold truncate">
-                    {legProgressionStats.leg1.goals} Goals <span className="text-slate-500 font-normal">({legProgressionStats.leg1.avgGoals}/g)</span>
-                  </span>
-                  <span className="text-slate-600 hidden sm:inline">•</span>
-                  <span className="text-slate-300 truncate">
-                    {legProgressionStats.leg1.homeWins}H-{legProgressionStats.leg1.draws}D-{legProgressionStats.leg1.awayWins}A
-                  </span>
-                  <span className="text-slate-600 hidden md:inline">•</span>
-                  <span className="text-cyan-300 text-[9px] truncate">
-                    {legProgressionStats.leg1.withProof} SS ({legProgressionStats.leg1.proofRate}%)
-                  </span>
+                  </div>
+
+                  {/* Stat 2: Remaining Matches */}
+                  <div className="flex items-center justify-end gap-1 min-w-0 text-right truncate">
+                    <span className="text-slate-500 shrink-0">Pending:</span>
+                    <strong
+                      className={`truncate ${
+                        legProgressionStats.leg1.pending > 0 ? 'text-amber-300' : 'text-emerald-400'
+                      }`}
+                    >
+                      {legProgressionStats.leg1.pending} Left
+                    </strong>
+                  </div>
+
+                  {/* Stat 3: Goals & Average */}
+                  <div className="flex items-center gap-1 min-w-0 text-slate-400 truncate">
+                    <span className="text-slate-500 shrink-0">Goals:</span>
+                    <strong className="text-amber-300 font-semibold truncate">
+                      {legProgressionStats.leg1.goals}{' '}
+                      <span className="text-slate-500 font-normal">({legProgressionStats.leg1.avgGoals}/g)</span>
+                    </strong>
+                  </div>
+
+                  {/* Stat 4: H-D-A Outcome Split */}
+                  <div className="flex items-center justify-end gap-1 min-w-0 text-right text-slate-300 truncate">
+                    <span className="text-slate-500 shrink-0">Record:</span>
+                    <span className="font-semibold text-slate-200 truncate">
+                      {legProgressionStats.leg1.homeWins}H • {legProgressionStats.leg1.draws}D • {legProgressionStats.leg1.awayWins}A
+                    </span>
+                  </div>
                 </div>
               </div>
 
               {/* 2nd Leg Compact Box */}
-              <div className="bg-[#141824] border border-cyan-500/30 hover:border-cyan-500/50 transition rounded-lg p-2.5 space-y-1.5 shadow-xs">
+              <div className="bg-[#141824] border border-cyan-500/30 hover:border-cyan-500/50 transition rounded-lg p-2.5 space-y-2 shadow-xs">
                 {/* Line 1: Header + Count + Percentage */}
                 <div className="flex items-center justify-between gap-1.5 text-xs font-mono">
                   <div className="flex items-center gap-1.5 min-w-0">
@@ -1044,26 +1067,47 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   />
                 </div>
 
-                {/* Line 3: High-Density Precision Stats Strip */}
-                <div className="flex items-center justify-between text-[10px] text-slate-400 font-mono gap-1 pt-0.5 border-t border-slate-800/60 flex-wrap">
-                  <span className="truncate">
-                    <strong className="text-slate-200">{legProgressionStats.leg2.roundsCompleted}/{legProgressionStats.leg2.roundsTotal}</strong> MDs
+                {/* Line 3: 2 Stats Per Row on Mobile (Grid with 2 columns) */}
+                <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 pt-1 border-t border-slate-800/60 text-[10px] sm:text-[11px] font-mono">
+                  {/* Stat 1: Matchdays Completed */}
+                  <div className="flex items-center gap-1 min-w-0 text-slate-400 truncate">
+                    <span className="text-slate-500 shrink-0">MDs:</span>
+                    <strong className="text-slate-200 truncate">
+                      {legProgressionStats.leg2.roundsCompleted}/{legProgressionStats.leg2.roundsTotal}
+                    </strong>
                     {legProgressionStats.leg2.roundsInProgress > 0 && (
-                      <span className="text-cyan-400 text-[9px] ml-0.5">({legProgressionStats.leg2.roundsInProgress} act)</span>
+                      <span className="text-cyan-400 text-[9px] shrink-0">({legProgressionStats.leg2.roundsInProgress} act)</span>
                     )}
-                  </span>
-                  <span className="text-slate-600 hidden xs:inline">•</span>
-                  <span className="text-cyan-300 font-semibold truncate">
-                    {legProgressionStats.leg2.goals} Goals <span className="text-slate-500 font-normal">({legProgressionStats.leg2.avgGoals}/g)</span>
-                  </span>
-                  <span className="text-slate-600 hidden sm:inline">•</span>
-                  <span className="text-slate-300 truncate">
-                    {legProgressionStats.leg2.homeWins}H-{legProgressionStats.leg2.draws}D-{legProgressionStats.leg2.awayWins}A
-                  </span>
-                  <span className="text-slate-600 hidden md:inline">•</span>
-                  <span className="text-slate-400 text-[9px] truncate">
-                    {legProgressionStats.leg2.pending} Left
-                  </span>
+                  </div>
+
+                  {/* Stat 2: Remaining Matches */}
+                  <div className="flex items-center justify-end gap-1 min-w-0 text-right truncate">
+                    <span className="text-slate-500 shrink-0">Pending:</span>
+                    <strong
+                      className={`truncate ${
+                        legProgressionStats.leg2.pending > 0 ? 'text-cyan-300' : 'text-emerald-400'
+                      }`}
+                    >
+                      {legProgressionStats.leg2.pending} Left
+                    </strong>
+                  </div>
+
+                  {/* Stat 3: Goals & Average */}
+                  <div className="flex items-center gap-1 min-w-0 text-slate-400 truncate">
+                    <span className="text-slate-500 shrink-0">Goals:</span>
+                    <strong className="text-cyan-300 font-semibold truncate">
+                      {legProgressionStats.leg2.goals}{' '}
+                      <span className="text-slate-500 font-normal">({legProgressionStats.leg2.avgGoals}/g)</span>
+                    </strong>
+                  </div>
+
+                  {/* Stat 4: H-D-A Outcome Split */}
+                  <div className="flex items-center justify-end gap-1 min-w-0 text-right text-slate-300 truncate">
+                    <span className="text-slate-500 shrink-0">Record:</span>
+                    <span className="font-semibold text-slate-200 truncate">
+                      {legProgressionStats.leg2.homeWins}H • {legProgressionStats.leg2.draws}D • {legProgressionStats.leg2.awayWins}A
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
