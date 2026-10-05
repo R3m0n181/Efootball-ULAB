@@ -25,6 +25,7 @@ interface HeaderProps {
   activeTab: 'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin';
   setActiveTab: (tab: 'standings' | 'fixtures' | 'teams' | 'managerlog' | 'records' | 'admin') => void;
   config: TournamentConfig;
+  totalTeams?: number;
   totalMatches: number;
   completedMatches: number;
   totalGoals: number;
@@ -52,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   config,
+  totalTeams = 20,
   totalMatches,
   completedMatches,
   totalGoals,
@@ -72,16 +74,17 @@ export const Header: React.FC<HeaderProps> = ({
   const defendingTeam = topDefendingTeam || mostCleanSheetsTeam;
   const progressPercent = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
   const [showAllStatsMobile, setShowAllStatsMobile] = useState(false);
+  const totalRoundsCount = config.totalRounds || (totalTeams > 1 ? (totalTeams - 1) * 2 : 38);
 
   return (
     <header className="border-b border-slate-800 bg-[#0a0c10]">
       {/* Top Bar */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2.5 sm:gap-3">
           {/* Brand & Tournament Info */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="relative group shrink-0">
-              <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/40 bg-slate-900 flex items-center justify-center p-0.5">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl overflow-hidden shadow-lg shadow-emerald-500/20 ring-2 ring-emerald-500/40 bg-slate-900 flex items-center justify-center p-0.5">
                 <img
                   src={LEAGUE_LOGO}
                   alt="eFootball League Logo"
@@ -90,13 +93,13 @@ export const Header: React.FC<HeaderProps> = ({
                 />
               </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-1.5 py-0.5 text-[9px] font-black tracking-wider uppercase bg-emerald-500 text-slate-950 rounded font-mono">
                   eFootball Mobile
                 </span>
                 {adminUser && (
-                  <span className="flex items-center gap-1 text-[11px] text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.2 rounded-full">
+                  <span className="flex items-center gap-1 text-[10px] sm:text-[11px] text-emerald-400 font-medium bg-emerald-950/60 border border-emerald-800/50 px-2 py-0.2 rounded-full">
                     <span className={`w-1.5 h-1.5 rounded-full ${isCloudSynced ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
                     {isCloudSynced ? 'Cloud Live Sync' : 'Connecting...'}
                   </span>
@@ -108,11 +111,11 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </div>
-              <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-2 mt-0.5">
+              <h1 className="text-base sm:text-lg md:text-xl font-black tracking-tight text-white flex items-center gap-2 mt-0.5 truncate">
                 {config.name}
               </h1>
-              <p className="text-[11px] text-slate-400">
-                21 Teams. Double Round-Robin Format (42 Matchdays)
+              <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                {totalTeams} Teams • {config.format === 'single_round_robin' ? 'Single' : 'Double'} Round-Robin ({totalRoundsCount} Matchdays)
               </p>
             </div>
           </div>

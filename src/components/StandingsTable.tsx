@@ -415,7 +415,7 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                 </th>
 
                 {/* Club / Team (Sticky Left next to Rank) */}
-                <th className="py-2.5 px-2.5 sm:px-3.5 min-w-[140px] sm:min-w-[200px] sticky left-8 sm:left-10 z-20 bg-[#0a0c10] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80">
+                <th className="py-2.5 px-2 sm:px-3.5 min-w-[120px] sm:min-w-[200px] max-w-[140px] sm:max-w-none sticky left-8 sm:left-10 z-20 bg-[#0a0c10] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80">
                   <div className="flex items-center gap-1">
                     <span>Club / Team</span>
                   </div>
@@ -571,21 +571,21 @@ export const StandingsTable: React.FC<StandingsTableProps> = ({
                     </td>
 
                     {/* Club (Top) & Manager (Below) - Sticky Left next to Rank */}
-                    <td className="py-2 px-2.5 sm:px-3.5 sticky left-8 sm:left-10 z-10 bg-[#0f1219] group-hover:bg-[#151a24] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80 transition">
-                      <div className="flex items-center gap-2 sm:gap-2.5">
+                    <td className="py-2 px-2 sm:px-3.5 min-w-[120px] sm:min-w-[200px] max-w-[140px] sm:max-w-none sticky left-8 sm:left-10 z-10 bg-[#0f1219] group-hover:bg-[#151a24] shadow-[2px_0_5px_rgba(0,0,0,0.5)] border-r border-slate-800/80 transition">
+                      <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
                         {/* Official Club Crest */}
-                        <TeamLogo team={row.team} size="table" />
+                        <TeamLogo team={row.team} size="table" className="shrink-0" />
 
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1 overflow-hidden">
                           {/* Team name first (Prominent) */}
-                          <div className="font-bold text-white group-hover:text-emerald-400 transition truncate text-xs sm:text-sm">
+                          <div className="font-bold text-white group-hover:text-emerald-400 transition truncate text-xs sm:text-sm leading-tight">
                             {row.team.clubName}
                           </div>
                           {/* Player name below */}
-                          <div className="flex items-center gap-1 text-[11px] text-slate-400">
+                          <div className="flex items-center gap-1 text-[10px] sm:text-[11px] text-slate-400 leading-tight mt-0.5">
                             <span className="font-medium text-slate-400 truncate">{row.team.managerName}</span>
-                            <span className="text-slate-600 shrink-0">•</span>
-                            <span className="font-mono text-[10px] text-slate-500 uppercase shrink-0">
+                            <span className="text-slate-600 shrink-0 hidden sm:inline">•</span>
+                            <span className="font-mono text-[9px] sm:text-[10px] text-slate-500 uppercase shrink-0 hidden sm:inline">
                               {row.team.shortCode}
                             </span>
                           </div>

@@ -15,6 +15,8 @@ import {
   Trophy,
   Activity,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   TrendingUp,
   X,
   Lock,
@@ -95,6 +97,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
   const [copiedAuditText, setCopiedAuditText] = useState(false);
   const [adminSubTab, setAdminSubTab] = useState<'pacing' | 'ledger' | 'fairplay' | 'reports'>('pacing');
+  const [enforcementFilter, setEnforcementFilter] = useState<'all' | 'pending' | 'uptodate'>('all');
+  const [isEnforcementCollapsed, setIsEnforcementCollapsed] = useState(false);
   const [proofsMap, setProofsMap] = useState<Map<string, string>>(() => new Map());
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -480,6 +484,95 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   const activeMatchday = config.currentRound && config.currentRound > 0 ? config.currentRound : earliestIncompleteRound;
 
+  // All Teams Pending Matches Tracker according to Current Active Matchday (sorted in descending order)
+  const allTeamsPendingMatchesCurrentMD = useMemo(() => {
+    const list: Array<{
+      team: Team;
+      pendingCount: number;
+      completedCount: number;
+      scheduledCountMD: number;
+      totalTournamentRemaining: number;
+      totalTournamentCount: number;
+    }> = [];
+
+    teams.forEach((t) => {
+      let completedCountMD = 0;
+      let scheduledCountMD = 0;
+      let totalCompletedAllSeason = 0;
+      let totalTournamentCount = 0;
+
+      matches.forEach((m) => {
+        const isTeamInMatch = m.homeTeamId === t.id || m.awayTeamId === t.id;
+        if (!isTeamInMatch) return;
+
+        totalTournamentCount++;
+        const isCompleted = m.status === 'completed' && m.homeScore !== null && m.awayScore !== null;
+        if (isCompleted) {
+          totalCompletedAllSeason++;
+        }
+
+        // Fixtures up to current active matchday
+        if (m.round <= activeMatchday) {
+          scheduledCountMD++;
+          if (isCompleted) {
+            completedCountMD++;
+          }
+        }
+      });
+
+      const pendingCount = scheduledCountMD - completedCountMD;
+      const totalTournamentRemaining = totalTournamentCount - totalCompletedAllSeason;
+
+      list.push({
+        team: t,
+        pendingCount,
+        completedCount: completedCountMD,
+        scheduledCountMD,
+        totalTournamentRemaining,
+        totalTournamentCount,
+      });
+    });
+
+    // Sort in strictly descending order of pending matches according to current active matchday
+    list.sort((a, b) => {
+      if (b.pendingCount !== a.pendingCount) {
+        return b.pendingCount - a.pendingCount;
+      }
+      if (b.totalTournamentRemaining !== a.totalTournamentRemaining) {
+        return b.totalTournamentRemaining - a.totalTournamentRemaining;
+      }
+      return a.team.clubName.localeCompare(b.team.clubName);
+    });
+
+    return list;
+  }, [teams, matches, activeMatchday]);
+
+  // Statistics & filtered view for Schedule Enforcement
+  const teamsBehindCount = useMemo(() => {
+    return allTeamsPendingMatchesCurrentMD.filter((t) => t.pendingCount > 0).length;
+  }, [allTeamsPendingMatchesCurrentMD]);
+
+  const teamsUpToDateCount = useMemo(() => {
+    return allTeamsPendingMatchesCurrentMD.filter((t) => t.pendingCount === 0).length;
+  }, [allTeamsPendingMatchesCurrentMD]);
+
+  const displayedEnforcementTeams = useMemo(() => {
+    let list = allTeamsPendingMatchesCurrentMD;
+    if (enforcementFilter === 'pending') {
+      list = list.filter((t) => t.pendingCount > 0);
+    } else if (enforcementFilter === 'uptodate') {
+      list = list.filter((t) => t.pendingCount === 0);
+    }
+    return list;
+  }, [allTeamsPendingMatchesCurrentMD, enforcementFilter]);
+
+  // Total pending fixtures up to current active matchday
+  const totalPendingUpToCurrentMD = useMemo(() => {
+    return matches.filter(
+      (m) => m.round <= activeMatchday && (m.status !== 'completed' || m.homeScore === null || m.awayScore === null)
+    ).length;
+  }, [matches, activeMatchday]);
+
   // Active matchday fixtures statistics
   const activeRoundMatches = useMemo(() => {
     return matches.filter((m) => m.round === activeMatchday);
@@ -513,117 +606,172 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     });
   }, [matches, totalRounds]);
 
+  // 1st & 2nd Leg Progression Calculations
+  const isOdd = teams.length % 2 !== 0;
+  const numLeg1Rounds = isOdd ? teams.length : Math.max(1, teams.length - 1); // 19 for 20 teams
+  const isDoubleLeg = config.format === 'double_round_robin' || matches.some((m) => m.round > numLeg1Rounds);
+
+  const legProgressionStats = useMemo(() => {
+    const leg1Matches = matches.filter((m) => m.round <= numLeg1Rounds);
+    const leg1Total = leg1Matches.length;
+    const leg1Completed = leg1Matches.filter((m) => m.status === 'completed').length;
+    const leg1Pending = leg1Total - leg1Completed;
+    const leg1Percent = leg1Total > 0 ? Math.round((leg1Completed / leg1Total) * 100) : 0;
+    const leg1Goals = leg1Matches
+      .filter((m) => m.status === 'completed')
+      .reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
+
+    const leg2Matches = matches.filter((m) => m.round > numLeg1Rounds);
+    const leg2Total = leg2Matches.length;
+    const leg2Completed = leg2Matches.filter((m) => m.status === 'completed').length;
+    const leg2Pending = leg2Total - leg2Completed;
+    const leg2Percent = leg2Total > 0 ? Math.round((leg2Completed / leg2Total) * 100) : 0;
+    const leg2Goals = leg2Matches
+      .filter((m) => m.status === 'completed')
+      .reduce((sum, m) => sum + (m.homeScore ?? 0) + (m.awayScore ?? 0), 0);
+
+    return {
+      numLeg1Rounds,
+      totalRounds,
+      isDoubleLeg,
+      leg1: {
+        total: leg1Total,
+        completed: leg1Completed,
+        pending: leg1Pending,
+        percent: leg1Percent,
+        goals: leg1Goals,
+        startRound: 1,
+        endRound: numLeg1Rounds,
+      },
+      leg2: {
+        total: leg2Total,
+        completed: leg2Completed,
+        pending: leg2Pending,
+        percent: leg2Percent,
+        goals: leg2Goals,
+        startRound: numLeg1Rounds + 1,
+        endRound: totalRounds,
+      },
+    };
+  }, [matches, numLeg1Rounds, totalRounds, isDoubleLeg]);
+
   return (
     <div className="space-y-4">
       {/* ADMIN MATCHDAY CONTROL (PLACED EXCLUSIVELY AT TOP OF ADMIN HUB) */}
       <div
         id="admin-matchday-control-panel"
-        className="bg-gradient-to-r from-[#0d1222] via-[#10172c] to-[#0d1222] border border-blue-500/40 rounded-xl p-3.5 sm:p-4 shadow-xl relative overflow-hidden"
+        className="bg-gradient-to-r from-[#0d1222] via-[#10172c] to-[#0d1222] border border-blue-500/40 rounded-xl p-3 sm:p-4 shadow-xl relative overflow-hidden"
       >
         <div className="absolute -top-10 -right-10 w-40 h-40 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 relative z-10">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 relative z-10">
           {/* Left: Info & Context */}
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 shrink-0">
-              <Calendar className="w-5 h-5" />
+          <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 shrink-0 mt-0.5 sm:mt-0">
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-black uppercase tracking-wider text-blue-400 font-mono">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-blue-400 font-mono">
                   Admin League Matchday Control
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/50 text-xs font-mono font-black shadow-sm">
-                  <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-200 border border-blue-500/50 text-[11px] sm:text-xs font-mono font-black shadow-xs">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-400 animate-pulse" />
                   Active: MD {activeMatchday}
                 </span>
-                <span className="text-[11px] text-slate-400 font-mono">
-                  ({activeRoundCompletedCount}/{activeRoundTotalCount} fixtures completed • {activeRoundProgress}%)
+                <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
+                  ({activeRoundCompletedCount}/{activeRoundTotalCount} MD fixtures • {activeRoundProgress}%)
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5">
+              <p className="text-[11px] sm:text-xs text-slate-300 mt-1 leading-snug">
                 Central tournament matchday setting — determines focal round in Manager Log, manager deadlines, and default Fixtures view.
               </p>
             </div>
           </div>
 
-          {/* Right: Interactive Matchday Controls */}
-          <div className="flex items-center gap-2 flex-wrap shrink-0">
-            {/* Stepper Previous Round */}
-            <button
-              id="btn-admin-prev-matchday"
-              type="button"
-              disabled={activeMatchday <= 1 || !onUpdateCurrentRound}
-              onClick={() => onUpdateCurrentRound?.(Math.max(1, activeMatchday - 1))}
-              className="px-2.5 py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
-              title="Switch to previous matchday"
-            >
-              <span>← MD{Math.max(1, activeMatchday - 1)}</span>
-            </button>
-
-            {/* Dropdown Selector */}
-            <div className="relative flex items-center">
-              <select
-                id="select-admin-active-matchday"
-                value={activeMatchday}
-                onChange={(e) => onUpdateCurrentRound?.(Number(e.target.value))}
-                disabled={!onUpdateCurrentRound}
-                className="bg-[#141a2e] text-white text-xs font-mono font-bold border border-blue-500/50 rounded-lg px-3 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer shadow-inner"
-                title="Select active tournament matchday"
+          {/* Right: Interactive Matchday Controls (Responsive for Mobile) */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2.5 sm:pt-0 border-t sm:border-t-0 border-slate-800/80 shrink-0">
+            {/* Row 1 on Mobile / Segmented Stepper Bar */}
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              {/* Stepper Previous Round */}
+              <button
+                id="btn-admin-prev-matchday"
+                type="button"
+                disabled={activeMatchday <= 1 || !onUpdateCurrentRound}
+                onClick={() => onUpdateCurrentRound?.(Math.max(1, activeMatchday - 1))}
+                className="px-2.5 py-1.5 sm:py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center justify-center shrink-0 min-h-[34px] sm:min-h-0"
+                title="Switch to previous matchday"
               >
-                {roundStatusOptions.map((opt) => (
-                  <option key={opt.round} value={opt.round}>
-                    MD {opt.round} — {opt.statusLabel}
-                  </option>
-                ))}
-              </select>
+                <span>← MD{Math.max(1, activeMatchday - 1)}</span>
+              </button>
+
+              {/* Dropdown Selector */}
+              <div className="relative flex-1 sm:flex-initial min-w-0">
+                <select
+                  id="select-admin-active-matchday"
+                  value={activeMatchday}
+                  onChange={(e) => onUpdateCurrentRound?.(Number(e.target.value))}
+                  disabled={!onUpdateCurrentRound}
+                  className="w-full sm:w-auto bg-[#141a2e] text-white text-xs font-mono font-bold border border-blue-500/50 rounded-lg px-2.5 sm:px-3 py-1.5 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 cursor-pointer shadow-inner truncate min-h-[34px] sm:min-h-0"
+                  title="Select active tournament matchday"
+                >
+                  {roundStatusOptions.map((opt) => (
+                    <option key={opt.round} value={opt.round}>
+                      MD {opt.round} — {opt.statusLabel}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Stepper Next Round */}
+              <button
+                id="btn-admin-next-matchday"
+                type="button"
+                disabled={activeMatchday >= totalRounds || !onUpdateCurrentRound}
+                onClick={() => onUpdateCurrentRound?.(Math.min(totalRounds, activeMatchday + 1))}
+                className="px-2.5 py-1.5 sm:py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center justify-center shrink-0 min-h-[34px] sm:min-h-0"
+                title="Switch to next matchday"
+              >
+                <span>MD{Math.min(totalRounds, activeMatchday + 1)} →</span>
+              </button>
             </div>
 
-            {/* Stepper Next Round */}
-            <button
-              id="btn-admin-next-matchday"
-              type="button"
-              disabled={activeMatchday >= totalRounds || !onUpdateCurrentRound}
-              onClick={() => onUpdateCurrentRound?.(Math.min(totalRounds, activeMatchday + 1))}
-              className="px-2.5 py-1.5 rounded-lg bg-[#141a2e] hover:bg-blue-600/30 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold disabled:opacity-30 disabled:cursor-not-allowed transition cursor-pointer flex items-center gap-1"
-              title="Switch to next matchday"
-            >
-              <span>MD{Math.min(totalRounds, activeMatchday + 1)} →</span>
-            </button>
+            {/* Row 2 on Mobile / Fast Actions */}
+            <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              {/* Fast Sync to Earliest Incomplete */}
+              {activeMatchday !== earliestIncompleteRound && onUpdateCurrentRound && (
+                <button
+                  id="btn-admin-sync-incomplete-round"
+                  type="button"
+                  onClick={() => onUpdateCurrentRound(earliestIncompleteRound)}
+                  className="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[11px] sm:text-xs font-mono font-bold transition cursor-pointer text-center justify-center min-h-[34px] sm:min-h-0 truncate"
+                  title={`Fast sync to earliest incomplete round (MD ${earliestIncompleteRound})`}
+                >
+                  Sync Earliest (MD{earliestIncompleteRound})
+                </button>
+              )}
 
-            {/* Fast Sync to Earliest Incomplete */}
-            {activeMatchday !== earliestIncompleteRound && onUpdateCurrentRound && (
-              <button
-                id="btn-admin-sync-incomplete-round"
-                type="button"
-                onClick={() => onUpdateCurrentRound(earliestIncompleteRound)}
-                className="px-2.5 py-1.5 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold transition cursor-pointer"
-                title={`Fast sync to earliest incomplete round (MD ${earliestIncompleteRound})`}
-              >
-                Sync to Earliest Incomplete (MD{earliestIncompleteRound})
-              </button>
-            )}
-
-            {/* Quick View in Fixtures */}
-            {onNavigateToFixtures && (
-              <button
-                id="btn-admin-view-in-fixtures"
-                type="button"
-                onClick={() => onNavigateToFixtures(activeMatchday)}
-                className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
-                title={`Open Matchday ${activeMatchday} in Fixtures`}
-              >
-                <span>View in Fixtures</span>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            )}
+              {/* Quick View in Fixtures */}
+              {onNavigateToFixtures && (
+                <button
+                  id="btn-admin-view-in-fixtures"
+                  type="button"
+                  onClick={() => onNavigateToFixtures(activeMatchday)}
+                  className="flex-1 sm:flex-initial px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1 min-h-[34px] sm:min-h-0"
+                  title={`Open Matchday ${activeMatchday} in Fixtures`}
+                >
+                  <span>View Fixtures</span>
+                  <ArrowRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-slate-400" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Top Banner & KPI Stats Grid */}
-      <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-4 sm:p-5 shadow-lg">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-800/80">
+      {/* Top Banner & Tournament Leg Progression Panel */}
+      <div className="bg-[#0f1219] border border-slate-800 rounded-xl p-3.5 sm:p-5 shadow-lg">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
@@ -673,203 +821,345 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
         </div>
 
-        {/* 4 KPI Metric Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-4">
-          {/* Card 1: Completed vs Total */}
-          <div className="bg-[#141824] border border-slate-800/90 rounded-lg p-3">
-            <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-              <span className="font-semibold">Match Submissions</span>
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
-            </div>
-            <div className="text-lg sm:text-xl font-black text-white font-mono">
-              {completedCount} <span className="text-xs font-normal text-slate-400">/ {totalMatches}</span>
-            </div>
-            <div className="mt-2 w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-              <div
-                className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-              <span>{progressPercent}% Complete</span>
-              <span>{scheduledCount} Pending</span>
-            </div>
-          </div>
-
-          {/* Card 2: Proof Verification Rate */}
-          <div className="bg-[#141824] border border-slate-800/90 rounded-lg p-3">
-            <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-              <span className="font-semibold">Proof Screenshot Rate</span>
-              <Camera className="w-3.5 h-3.5 text-cyan-400" />
-            </div>
-            <div className="text-lg sm:text-xl font-black text-white font-mono flex items-baseline gap-1.5">
-              <span>{proofRate}%</span>
-              <span className="text-xs font-normal text-cyan-400">({matchesWithProof.length} verified)</span>
-            </div>
-            <div className="mt-2 text-[10px] text-slate-400 flex items-center gap-1">
-              {matchesMissingProof.length > 0 ? (
-                <span className="text-amber-400 font-medium flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" /> {matchesMissingProof.length} missing screenshot
+        {/* 1st & 2nd Leg Progression Stats Panel */}
+        {legProgressionStats.isDoubleLeg && (
+          <div
+            id="admin-leg-progression-panel"
+            className="mt-3.5 sm:mt-4 pt-3.5 sm:pt-4 border-t border-slate-800/80"
+          >
+            {/* Header: Title, Description & Overall Pill */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-3">
+              <div className="flex items-start gap-2.5 min-w-0">
+                <span className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0 mt-0.5 sm:mt-0">
+                  <Layers className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </span>
-              ) : (
-                <span className="text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> 100% verified with screenshots
+                <div className="min-w-0">
+                  <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider">
+                    Tournament Leg Progression Breakdown
+                  </h3>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 leading-snug">
+                    Match completion rates for 1st Leg (MD 1–{legProgressionStats.numLeg1Rounds}) &amp; 2nd Leg (MD {legProgressionStats.numLeg1Rounds + 1}–{legProgressionStats.totalRounds}).
+                  </p>
+                </div>
+              </div>
+              <div className="self-start sm:self-center shrink-0">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800/90 text-slate-300 border border-slate-700/70 text-[11px] sm:text-xs font-mono shadow-xs">
+                  <span className="text-slate-400">Total:</span>
+                  <strong className="text-emerald-400 font-bold">{completedCount}/{totalMatches}</strong>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-white font-semibold">{progressPercent}%</span>
                 </span>
-              )}
-            </div>
-          </div>
-
-          {/* Card 3: Total Goals */}
-          <div className="bg-[#141824] border border-slate-800/90 rounded-lg p-3">
-            <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-              <span className="font-semibold">Recorded Goals</span>
-              <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            </div>
-            <div className="text-lg sm:text-xl font-black text-white font-mono">
-              {totalGoals} <span className="text-xs font-normal text-slate-400">Goals</span>
-            </div>
-            <div className="mt-2 text-[10px] text-slate-400">
-              Avg <strong className="text-emerald-400 font-mono">{avgGoalsPerMatch}</strong> goals / match
-            </div>
-          </div>
-
-          {/* Card 4: Action Status */}
-          <div className="bg-[#141824] border border-slate-800/90 rounded-lg p-3">
-            <div className="flex items-center justify-between text-slate-400 text-[11px] mb-1">
-              <span className="font-semibold">Admin State</span>
-              <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-            </div>
-            <div className="text-sm font-bold text-white truncate">
-              {adminUser ? adminUser.email : 'Public Observer'}
-            </div>
-            <div className="mt-2 text-[10px]">
-              {adminUser ? (
-                <span className="text-emerald-400 font-medium">Score edit & reset enabled</span>
-              ) : (
-                <span className="text-slate-400">Login for score edit rights</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Operational Backlog Alert Bar (Direct Bridge to Manager Log) */}
-      <div
-        className={`p-3.5 sm:p-4 rounded-xl border transition-all ${
-          activeBacklogSummary.hasBottlenecks
-            ? activeBacklogSummary.criticalCount > 0
-              ? 'bg-rose-950/25 border-rose-500/40 shadow-sm shadow-rose-950/20'
-              : activeBacklogSummary.highCount > 0
-              ? 'bg-orange-950/25 border-orange-500/40 shadow-sm shadow-orange-950/20'
-              : 'bg-amber-950/20 border-amber-500/40 shadow-sm shadow-amber-950/20'
-            : 'bg-emerald-950/20 border-emerald-500/30'
-        }`}
-      >
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3.5">
-          <div className="flex items-start gap-3 min-w-0">
-            <div
-              className={`p-2 rounded-lg shrink-0 mt-0.5 ${
-                activeBacklogSummary.hasBottlenecks
-                  ? activeBacklogSummary.criticalCount > 0
-                    ? 'bg-rose-500/20 text-rose-400'
-                    : 'bg-amber-500/20 text-amber-400'
-                  : 'bg-emerald-500/20 text-emerald-400'
-              }`}
-            >
-              {activeBacklogSummary.hasBottlenecks ? (
-                <AlertTriangle className="w-4 h-4" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4" />
-              )}
+              </div>
             </div>
 
-            <div className="min-w-0 space-y-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Schedule Enforcement
-                </span>
-                {activeBacklogSummary.hasBottlenecks ? (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <span className="text-xs font-bold text-white">
-                      {activeBacklogSummary.totalActivePendingMatches} active match
-                      {activeBacklogSummary.totalActivePendingMatches > 1 ? 'es' : ''} holding up round progression
+            {/* 2-Column Leg Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-3.5">
+              {/* 1st Leg Progression Box */}
+              <div className="bg-[#141824] border border-emerald-500/30 hover:border-emerald-500/50 transition rounded-xl p-3 sm:p-3.5 relative overflow-hidden shadow-sm">
+                {/* Top Badge Row */}
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-bold text-[10px] uppercase tracking-wider">
+                      1st Leg Phase
                     </span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                      Rounds {activeBacklogSummary.activeRounds.map((r) => `R${r}`).join(', ')}
+                    <span className="text-[11px] sm:text-xs font-bold text-white font-mono">
+                      MD {legProgressionStats.leg1.startRound}–{legProgressionStats.leg1.endRound}
                     </span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <span className="text-xs font-bold text-emerald-300">
-                      All started matchdays 100% on schedule
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                      legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
+                      legProgressionStats.leg1.total > 0
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : legProgressionStats.leg1.completed > 0
+                        ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {legProgressionStats.leg1.completed === legProgressionStats.leg1.total &&
+                    legProgressionStats.leg1.total > 0
+                      ? 'Completed (100%)'
+                      : legProgressionStats.leg1.completed > 0
+                      ? `In Progress (${legProgressionStats.leg1.percent}%)`
+                      : 'Scheduled (0%)'}
+                  </span>
+                </div>
+
+                {/* Match Counts & Percentage */}
+                <div className="flex items-baseline justify-between mt-1 mb-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-black text-white font-mono">
+                      {legProgressionStats.leg1.completed}
                     </span>
-                  </>
-                )}
+                    <span className="text-[11px] sm:text-xs font-semibold text-slate-400 font-mono">
+                      / {legProgressionStats.leg1.total} played
+                    </span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-emerald-400 font-mono">
+                    {legProgressionStats.leg1.percent}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2.5">
+                  <div
+                    className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-emerald-500/30"
+                    style={{ width: `${legProgressionStats.leg1.percent}%` }}
+                  />
+                </div>
+
+                {/* Sub-stats: Pending & Goals */}
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 pt-2 border-t border-slate-800/70 font-mono gap-1.5">
+                  <span className="flex items-center gap-1 min-w-0 truncate">
+                    <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                    <span className="truncate">
+                      <strong className="text-slate-200">{legProgressionStats.leg1.pending}</strong> pending
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-300 shrink-0">
+                    <Trophy className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>
+                      <strong className="text-amber-300">{legProgressionStats.leg1.goals}</strong> goals
+                    </span>
+                  </span>
+                </div>
               </div>
 
-              {activeBacklogSummary.hasBottlenecks ? (
-                <div className="flex items-center gap-2 flex-wrap text-xs text-slate-300">
-                  <span>
-                    <strong className="text-white font-mono">{activeBacklogSummary.laggingTeams.length}</strong>{' '}
-                    club{activeBacklogSummary.laggingTeams.length > 1 ? 's' : ''} lagging behind:{' '}
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {activeBacklogSummary.laggingTeams.slice(0, 4).map(({ team, count }) => {
-                      const isCritical = count > 7;
-                      const isHigh = count > 5;
-                      const isModerate = count > 3;
-                      return (
-                        <span
-                          key={team.id}
-                          className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-                            isCritical
-                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                              : isHigh
-                              ? 'bg-orange-500/20 text-orange-300 border-orange-500/30'
-                              : isModerate
-                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                              : 'bg-slate-800 text-slate-300 border-slate-700'
-                          }`}
-                        >
-                          <TeamLogo team={team} size="xs" />
-                          <span>{team.clubName}</span>
-                          <strong className="font-mono font-bold">({count})</strong>
-                        </span>
-                      );
-                    })}
-                    {activeBacklogSummary.laggingTeams.length > 4 && (
-                      <span className="text-[10px] text-slate-400 font-medium">
-                        +{activeBacklogSummary.laggingTeams.length - 4} more
-                      </span>
-                    )}
+              {/* 2nd Leg Progression Box */}
+              <div className="bg-[#141824] border border-cyan-500/30 hover:border-cyan-500/50 transition rounded-xl p-3 sm:p-3.5 relative overflow-hidden shadow-sm">
+                {/* Top Badge Row */}
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-[10px] uppercase tracking-wider">
+                      2nd Leg Phase (Return)
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-bold text-white font-mono">
+                      MD {legProgressionStats.leg2.startRound}–{legProgressionStats.leg2.endRound}
+                    </span>
                   </div>
+                  <span
+                    className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                      legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
+                      legProgressionStats.leg2.total > 0
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : legProgressionStats.leg2.completed > 0
+                        ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                        : 'bg-slate-800 text-slate-400 border-slate-700'
+                    }`}
+                  >
+                    {legProgressionStats.leg2.completed === legProgressionStats.leg2.total &&
+                    legProgressionStats.leg2.total > 0
+                      ? 'Completed (100%)'
+                      : legProgressionStats.leg2.completed > 0
+                      ? `In Progress (${legProgressionStats.leg2.percent}%)`
+                      : 'Scheduled (0%)'}
+                  </span>
                 </div>
-              ) : (
-                <p className="text-xs text-slate-400">
-                  No active bottlenecks detected across started matchdays. Pacing is healthy.
-                </p>
-              )}
+
+                {/* Match Counts & Percentage */}
+                <div className="flex items-baseline justify-between mt-1 mb-2">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl sm:text-2xl font-black text-white font-mono">
+                      {legProgressionStats.leg2.completed}
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-semibold text-slate-400 font-mono">
+                      / {legProgressionStats.leg2.total} played
+                    </span>
+                  </div>
+                  <span className="text-xs sm:text-sm font-bold text-cyan-400 font-mono">
+                    {legProgressionStats.leg2.percent}%
+                  </span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden mb-2.5">
+                  <div
+                    className="bg-gradient-to-r from-cyan-500 to-blue-400 h-full rounded-full transition-all duration-500 shadow-sm shadow-cyan-500/30"
+                    style={{ width: `${legProgressionStats.leg2.percent}%` }}
+                  />
+                </div>
+
+                {/* Sub-stats: Pending & Goals */}
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-slate-400 pt-2 border-t border-slate-800/70 font-mono gap-1.5">
+                  <span className="flex items-center gap-1 min-w-0 truncate">
+                    <Clock className="w-3 h-3 text-slate-500 shrink-0" />
+                    <span className="truncate">
+                      <strong className="text-slate-200">{legProgressionStats.leg2.pending}</strong> scheduled
+                    </span>
+                  </span>
+                  <span className="flex items-center gap-1 text-slate-300 shrink-0">
+                    <Trophy className="w-3 h-3 text-amber-400 shrink-0" />
+                    <span>
+                      <strong className="text-cyan-300">{legProgressionStats.leg2.goals}</strong> goals
+                    </span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Operational Backlog & Schedule Enforcement Tracker (Reorganized for Ultra-Clean Mobile Experience) */}
+      <div
+        id="admin-schedule-enforcement-panel"
+        className="bg-[#0f1219] border border-slate-800 rounded-xl p-3 sm:p-4 shadow-lg space-y-2.5 sm:space-y-3 overflow-hidden max-w-full"
+      >
+        {/* Header with Title, Stats, and Mobile Collapse Toggle */}
+        <div className="flex items-start sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-800/80">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <button
+              type="button"
+              onClick={() => setIsEnforcementCollapsed(!isEnforcementCollapsed)}
+              className="p-1.5 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 border border-blue-500/30 text-blue-400 shrink-0 transition cursor-pointer"
+              title={isEnforcementCollapsed ? 'Expand Schedule Enforcement' : 'Collapse Schedule Enforcement'}
+            >
+              {isEnforcementCollapsed ? <ChevronDown className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+            </button>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Schedule Enforcement
+                </span>
+                <span className="text-slate-600 hidden sm:inline">•</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/40">
+                  MD 1–{activeMatchday}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-slate-400 font-mono">
+                  ({totalPendingUpToCurrentMD} pending)
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Direct Action Shortcut to Manager Log */}
-          {onNavigateToManagerLog && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {onNavigateToManagerLog && (
+              <button
+                onClick={onNavigateToManagerLog}
+                className="px-2.5 py-1 rounded-lg bg-[#141824] hover:bg-slate-800 text-slate-200 hover:text-white border border-slate-700/80 text-[11px] sm:text-xs font-semibold flex items-center justify-center gap-1 transition shadow-xs cursor-pointer"
+                title="Open full backlog directory in Manager Log"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Manager Log</span>
+                <ArrowRight className="w-3 h-3 text-slate-400" />
+              </button>
+            )}
             <button
-              onClick={onNavigateToManagerLog}
-              className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 shrink-0 transition shadow-sm cursor-pointer ${
-                activeBacklogSummary.hasBottlenecks
-                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold shadow-amber-500/10'
-                  : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-              }`}
+              type="button"
+              onClick={() => setIsEnforcementCollapsed(!isEnforcementCollapsed)}
+              className="p-1 sm:hidden text-slate-400 hover:text-white transition cursor-pointer"
+              title={isEnforcementCollapsed ? 'Expand' : 'Collapse'}
             >
-              <Users className="w-3.5 h-3.5" />
-              <span>Inspect in Manager Log</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              {isEnforcementCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
             </button>
-          )}
+          </div>
         </div>
+
+        {/* Filter Quick Chips & Compact Grid (No Excessive Scrolling on Mobile) */}
+        {!isEnforcementCollapsed && (
+          <>
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-0.5">
+              <div className="flex items-center gap-1 bg-[#141824] p-0.5 rounded-lg border border-slate-800/90 text-[10px] sm:text-[11px] font-mono">
+                <button
+                  type="button"
+                  onClick={() => setEnforcementFilter('all')}
+                  className={`px-2 py-0.5 rounded font-bold transition cursor-pointer ${
+                    enforcementFilter === 'all'
+                      ? 'bg-blue-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All ({allTeamsPendingMatchesCurrentMD.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnforcementFilter('pending')}
+                  className={`px-2 py-0.5 rounded font-bold transition cursor-pointer flex items-center gap-1 ${
+                    enforcementFilter === 'pending'
+                      ? 'bg-rose-500/30 text-rose-200 border border-rose-500/50'
+                      : 'text-slate-400 hover:text-rose-300'
+                  }`}
+                >
+                  <span>Behind MD</span>
+                  <span className="px-1 py-0.2 rounded-full bg-rose-500/30 text-rose-300 text-[9px]">
+                    {teamsBehindCount}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEnforcementFilter('uptodate')}
+                  className={`px-2 py-0.5 rounded font-bold transition cursor-pointer flex items-center gap-1 ${
+                    enforcementFilter === 'uptodate'
+                      ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-500/50'
+                      : 'text-slate-400 hover:text-emerald-300'
+                  }`}
+                >
+                  <span>Up to Date</span>
+                  <span className="px-1 py-0.2 rounded-full bg-emerald-500/30 text-emerald-300 text-[9px]">
+                    {teamsUpToDateCount}
+                  </span>
+                </button>
+              </div>
+
+              <span className="text-[10px] text-slate-400 hidden md:inline">
+                Ranked by pending matches (descending)
+              </span>
+            </div>
+
+            {/* Scroll-Capped Responsive Grid */}
+            <div className="max-h-56 sm:max-h-72 md:max-h-none overflow-y-auto pr-0.5 space-y-1.5 custom-scrollbar">
+              <div className="grid grid-cols-2 min-[540px]:grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-1.5 pt-0.5">
+                {displayedEnforcementTeams.map((item, idx) => {
+                  const isHigh = item.pendingCount >= 3;
+                  const isModerate = item.pendingCount > 0 && item.pendingCount < 3;
+                  const isUpToDate = item.pendingCount === 0;
+
+                  return (
+                    <button
+                      key={item.team.id}
+                      type="button"
+                      onClick={() => onSelectTeam(item.team)}
+                      className="flex items-center justify-between gap-1 p-1.5 sm:p-2 rounded-lg border text-left transition cursor-pointer hover:border-blue-400/50 hover:bg-[#151b2c] active:scale-[0.98] bg-[#141824] border-slate-800/90 min-w-0 w-full overflow-hidden"
+                      title={`${item.team.clubName} (@${item.team.managerName}): ${item.pendingCount} pending fixture${item.pendingCount === 1 ? '' : 's'} up to MD ${activeMatchday} (${item.completedCount}/${item.scheduledCountMD} played) • ${item.totalTournamentRemaining} total remaining in season`}
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
+                        <span className="text-[10px] font-mono font-bold text-slate-500 w-3 shrink-0 text-right">
+                          {idx + 1}.
+                        </span>
+                        <TeamLogo team={item.team} size="xs" className="shrink-0 scale-90 sm:scale-100 origin-left" />
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <span className="text-[11px] sm:text-xs font-bold text-white block truncate leading-tight group-hover:text-blue-300">
+                            {item.team.clubName}
+                          </span>
+                          <span className="text-[9px] text-slate-400 block truncate leading-none mt-0.5">
+                            {item.team.managerName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end justify-center shrink-0 pl-1">
+                        <span
+                          className={`px-1.5 py-0.5 rounded font-mono font-bold text-[10px] sm:text-[11px] border leading-none shrink-0 ${
+                            isHigh
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              : isModerate
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          }`}
+                        >
+                          {item.pendingCount}
+                        </span>
+                        <span className="text-[8px] text-slate-500 font-mono mt-0.5 leading-none shrink-0">
+                          {isUpToDate ? 'done' : 'left'}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Commissioner Navigation Sub-Tabs */}

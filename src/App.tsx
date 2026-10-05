@@ -652,6 +652,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         config={config}
+        totalTeams={teams.length}
         totalMatches={summary.totalMatches}
         completedMatches={summary.completedMatches}
         totalGoals={summary.totalGoals}
@@ -673,7 +674,7 @@ export default function App() {
       />
 
       {/* Main Content Area */}
-      <main id="tournament-main-workspace" className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 lg:px-6 py-3.5">
+      <main id="tournament-main-workspace" className="flex-1 max-w-7xl w-full mx-auto px-2.5 sm:px-4 lg:px-6 py-2.5 sm:py-3.5">
         {/* STANDINGS TABLE TAB */}
         {activeTab === 'standings' && (
           <StandingsTable
