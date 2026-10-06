@@ -1,5 +1,5 @@
 {
-  "name": "Remix eFootball Mobile League Portal",
+  "name": "eFootball Mobile League Portal",
   "description": "Tournament portal for eFootball Mobile league featuring automated round-robin scheduling, match result submission, real-time standings, and top scorer / assist leaderboards.",
   "requestFramePermissions": [],
   "majorCapabilities": [
