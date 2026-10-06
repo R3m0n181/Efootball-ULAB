@@ -5,8 +5,6 @@ import {
   AlertTriangle,
   ChevronRight,
   ChevronDown,
-  Copy,
-  Check,
   Flame,
   Calendar,
   Layers,
@@ -35,7 +33,6 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
   onNavigateToManagerLog,
 }) => {
   const [expandedRound, setExpandedRound] = useState<number | null>(null);
-  const [copiedLaggingText, setCopiedLaggingText] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'active' | 'unstarted'>('all');
   const [pendingOpenMap, setPendingOpenMap] = useState<Record<number, boolean>>({});
   const [finishedOpenMap, setFinishedOpenMap] = useState<Record<number, boolean>>({});
@@ -174,32 +171,6 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
     }
     return roundStats;
   }, [roundStats, statusFilter]);
-
-  // Copy lagging round announcement
-  const handleCopyLaggingAnnouncement = () => {
-    if (!overall.laggingRound) return;
-    const pendingMatches = overall.laggingRound.matches.filter(
-      (m) => m.status !== 'completed' || m.homeScore === null
-    );
-
-    const lines = [
-      `🚨 *${config.name} — Round ${overall.laggingRound.round} Pending Matches Alert* 🚨`,
-      `Round ${overall.laggingRound.round} is currently holding up tournament progression (${overall.laggingRound.completed}/${overall.laggingRound.total} matches played, ${overall.laggingRound.percent}% complete).`,
-      '',
-      '*Pending Fixtures to be played:*',
-      ...pendingMatches.map((m) => {
-        const home = teamMap.get(m.homeTeamId);
-        const away = teamMap.get(m.awayTeamId);
-        return `• ${home?.clubName || 'Home'} (${home?.managerName || 'TBD'}) vs ${away?.clubName || 'Away'} (${away?.managerName || 'TBD'})`;
-      }),
-      '',
-      '👉 Managers, please coordinate and submit your match results with screenshot proof as soon as possible!',
-    ];
-
-    navigator.clipboard.writeText(lines.join('\n'));
-    setCopiedLaggingText(true);
-    setTimeout(() => setCopiedLaggingText(false), 2500);
-  };
 
   return (
     <div className="space-y-4">

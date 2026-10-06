@@ -109,7 +109,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
   });
 
   // UI States
-  const [copiedMySchedule, setCopiedMySchedule] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'backlog-desc' | 'backlog-asc' | 'team-asc' | 'team-desc'>('backlog-desc');
@@ -349,33 +348,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
     });
   }, [managerStats, activeFilter, searchTerm, sortBy]);
 
-  // Member "Copy My Match Schedule"
-  const handleCopyMyMatchSchedule = () => {
-    if (!myClubStats) return;
-
-    if (myClubStats.pendingMatches.length === 0) {
-      const text = `🎉 *${myClubStats.team.clubName}* (@${myClubStats.team.managerName}) is 100% caught up on all fixtures through Matchday ${activeMatchday} in ${config.name}!`;
-      navigator.clipboard.writeText(text);
-      setCopiedMySchedule(true);
-      setTimeout(() => setCopiedMySchedule(false), 2500);
-      return;
-    }
-
-    const opponentFixtures = myClubStats.pendingMatches
-      .map((pm) => {
-        const oppId = pm.homeTeamId === myClubStats.team.id ? pm.awayTeamId : pm.homeTeamId;
-        const opp = teamMap.get(oppId);
-        return `• Round ${pm.round}: vs ${opp?.clubName} (@${opp?.managerName})`;
-      })
-      .join('\n');
-
-    const text = `⚽ *Match Coordination for ${myClubStats.team.clubName}* (@${myClubStats.team.managerName})\nReady to play active league fixtures (Matchdays 1-${activeMatchday}):\n${opponentFixtures}\nPlease reply or DM me when you are available to play!`;
-
-    navigator.clipboard.writeText(text);
-    setCopiedMySchedule(true);
-    setTimeout(() => setCopiedMySchedule(false), 2500);
-  };
-
   return (
     <div className="space-y-4">
       {/* Top Header Card */}
@@ -582,15 +554,6 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 self-start md:self-center flex-wrap">
-              <button
-                onClick={handleCopyMyMatchSchedule}
-                className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition shadow-sm cursor-pointer"
-                title="Copy ready-to-paste message to coordinate with your active opponents"
-              >
-                {copiedMySchedule ? <Check className="w-3.5 h-3.5" /> : <MessageCircle className="w-3.5 h-3.5" />}
-                <span>{copiedMySchedule ? 'Message Copied!' : 'Copy Match Request'}</span>
-              </button>
-
               <button
                 onClick={() => handleSelectMyClub('')}
                 className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition cursor-pointer flex items-center gap-1"

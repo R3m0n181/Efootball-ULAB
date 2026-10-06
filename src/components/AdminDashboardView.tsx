@@ -45,6 +45,7 @@ import {
   getDayKeyHumanLabel,
   groupMatchesByRealLifeDay,
 } from '../utils/matchDateUtils';
+import { AdminPendingMatchesTab } from './admin/AdminPendingMatchesTab';
 import { AdminPacingTab } from './admin/AdminPacingTab';
 import { AdminFairPlayTab } from './admin/AdminFairPlayTab';
 import { AdminReportsTab } from './admin/AdminReportsTab';
@@ -96,9 +97,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [previewScreenshotUrl, setPreviewScreenshotUrl] = useState<{ url: string; matchTitle: string; score: string } | null>(null);
   const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
   const [copiedAuditText, setCopiedAuditText] = useState(false);
-  const [adminSubTab, setAdminSubTab] = useState<'pacing' | 'ledger' | 'fairplay' | 'reports'>('pacing');
+  const [adminSubTab, setAdminSubTab] = useState<'pending' | 'pacing' | 'ledger' | 'fairplay' | 'reports'>('pending');
   const [enforcementFilter, setEnforcementFilter] = useState<'all' | 'pending' | 'uptodate'>('all');
-  const [isEnforcementCollapsed, setIsEnforcementCollapsed] = useState(false);
+  const [isEnforcementCollapsed, setIsEnforcementCollapsed] = useState(true);
   const [proofsMap, setProofsMap] = useState<Map<string, string>>(() => new Map());
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -1280,6 +1281,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       {/* Commissioner Navigation Sub-Tabs */}
       <div className="flex items-center gap-1.5 p-1 bg-[#0a0c10] border border-slate-800 rounded-xl overflow-x-auto no-scrollbar shadow-md">
         <button
+          id="admin-subtab-pending"
+          onClick={() => setAdminSubTab('pending')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
+            adminSubTab === 'pending'
+              ? 'bg-emerald-500 text-slate-950 shadow-sm'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Pending Fixtures</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-slate-900/30 text-white font-mono">
+            {scheduledCount}
+          </span>
+        </button>
+
+        <button
           id="admin-subtab-pacing"
           onClick={() => setAdminSubTab('pacing')}
           className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition whitespace-nowrap cursor-pointer ${
@@ -2212,6 +2229,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Sub-Tab: Pending Fixtures (Earliest Match First) */}
+      {adminSubTab === 'pending' && (
+        <AdminPendingMatchesTab
+          matches={matches}
+          teams={teams}
+          config={config}
+          activeMatchday={activeMatchday}
+          adminUser={adminUser}
+          onEditMatch={onEditMatch}
+          onViewMatchDetail={onViewMatchDetail}
+          onSelectTeam={onSelectTeam}
+          onNavigateToFixtures={onNavigateToFixtures}
+          onNavigateToManagerLog={onNavigateToManagerLog}
+        />
       )}
 
       {/* Sub-Tab: Round Pacing & Bottlenecks */}
