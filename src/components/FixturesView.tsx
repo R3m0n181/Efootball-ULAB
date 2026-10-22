@@ -11,6 +11,7 @@ import {
   FileText,
   Camera,
   Eye,
+  Ban,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -146,16 +147,16 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
   }, [matches, selectedRound, selectedTeamId]);
 
   const totalCount = scopedMatches.length;
-  const completedCount = scopedMatches.filter((m) => m.status === 'completed').length;
-  const scheduledCount = scopedMatches.filter((m) => m.status !== 'completed').length;
+  const completedCount = scopedMatches.filter((m) => m.status === 'completed' || m.status === 'abandoned').length;
+  const scheduledCount = scopedMatches.filter((m) => m.status !== 'completed' && m.status !== 'abandoned').length;
 
   // Filtered matches based on status filter
   const roundMatches = useMemo(() => {
     if (statusFilter === 'completed') {
-      return scopedMatches.filter((m) => m.status === 'completed');
+      return scopedMatches.filter((m) => m.status === 'completed' || m.status === 'abandoned');
     }
     if (statusFilter === 'scheduled') {
-      return scopedMatches.filter((m) => m.status !== 'completed');
+      return scopedMatches.filter((m) => m.status !== 'completed' && m.status !== 'abandoned');
     }
     return scopedMatches;
   }, [scopedMatches, statusFilter]);
@@ -462,27 +463,30 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
             if (!homeTeam || !awayTeam) return null;
 
+            const isAbandoned = match.status === 'abandoned';
             const isCompleted =
-              match.status === 'completed' &&
+              (match.status === 'completed' || isAbandoned) &&
               match.homeScore !== null &&
               match.awayScore !== null;
 
-            const homeWon = isCompleted && match.homeScore! > match.awayScore!;
-            const awayWon = isCompleted && match.awayScore! > match.homeScore!;
+            const homeWon = isCompleted && !isAbandoned && match.homeScore! > match.awayScore!;
+            const awayWon = isCompleted && !isAbandoned && match.awayScore! > match.homeScore!;
 
             return (
               <div
                 key={match.id}
                 onClick={isCompleted ? () => onViewMatchDetail(match) : undefined}
                 className={`rounded-xl p-3.5 transition duration-200 flex flex-col justify-between relative overflow-hidden group ${
-                  isCompleted
+                  isAbandoned
+                    ? 'bg-gradient-to-b from-[#180f14] via-[#141018] to-[#0c0d14] border-2 border-rose-500/70 shadow-lg shadow-rose-950/50 hover:border-rose-400 hover:shadow-rose-900/50 ring-1 ring-rose-500/30 cursor-pointer'
+                    : isCompleted
                     ? 'bg-gradient-to-b from-[#0c1f1c] via-[#0e1722] to-[#0a1318] border-2 border-emerald-500/70 shadow-lg shadow-emerald-950/50 hover:border-emerald-400 hover:shadow-emerald-900/50 ring-1 ring-emerald-500/30 cursor-pointer'
                     : 'bg-[#0f1219] border border-slate-800 hover:border-slate-700/80 shadow-md'
                 }`}
               >
                 {/* Ambient glow for completed matches */}
                 {isCompleted && (
-                  <div className="absolute -right-8 -top-8 w-28 h-28 bg-emerald-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className={`absolute -right-8 -top-8 w-28 h-28 rounded-full blur-xl pointer-events-none ${isAbandoned ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`} />
                 )}
 
                 {/* Accent top gradient bar */}
@@ -495,7 +499,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
                 {/* Match Header */}
                 <div className="flex items-center justify-between text-[10px] text-slate-400 mb-2.5">
-                  <span className={`font-mono font-medium ${isCompleted ? 'text-emerald-300/90' : 'text-slate-400'}`}>
+                  <span className={`font-mono font-medium ${isAbandoned ? 'text-rose-300/90' : isCompleted ? 'text-emerald-300/90' : 'text-slate-400'}`}>
                     MD {match.round} • Match #{match.matchNumber}
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -506,7 +510,12 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                       </span>
                     )}
 
-                    {isCompleted ? (
+                    {isAbandoned ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-300 bg-rose-950 border border-rose-500/60 px-2 py-0.5 rounded-full font-mono shadow-xs shadow-rose-500/20">
+                        <Ban className="w-3 h-3 text-rose-400" />
+                        Abandoned
+                      </span>
+                    ) : isCompleted ? (
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-500/60 px-2 py-0.5 rounded-full font-mono shadow-xs shadow-emerald-500/20">
                         <CheckCircle2 className="w-3 h-3 text-emerald-400" />
                         Completed
@@ -554,7 +563,16 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
                   {/* Score or VS */}
                   <div className="col-span-1 flex flex-col items-center justify-center">
-                    {isCompleted ? (
+                    {isAbandoned ? (
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1 bg-[#140b0d] px-2.5 py-1 rounded-lg border border-rose-500/40 shadow-inner group-hover:border-rose-400/60">
+                          <span className="text-base font-black font-mono text-rose-300">0</span>
+                          <span className="text-slate-500 font-bold">:</span>
+                          <span className="text-base font-black font-mono text-rose-300">0</span>
+                        </div>
+                        <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5 whitespace-nowrap">Double Forfeit</span>
+                      </div>
+                    ) : isCompleted ? (
                       <div className="flex items-center gap-1 bg-[#061014] px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-inner group-hover:border-emerald-400/60">
                         <span
                           className={`text-base font-black font-mono ${
@@ -601,8 +619,12 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
                 {/* Match Notes if any */}
                 {isCompleted && match.notes && (
-                  <div className="mt-2 text-[10px] text-emerald-200/90 bg-[#061214] p-1.5 rounded border border-emerald-800/40 flex items-center gap-1.5">
-                    <FileText className="w-3 h-3 text-emerald-400 shrink-0" />
+                  <div className={`mt-2 text-[10px] p-1.5 rounded border flex items-center gap-1.5 ${
+                    isAbandoned
+                      ? 'text-rose-200/90 bg-[#160a0f] border-rose-800/40'
+                      : 'text-emerald-200/90 bg-[#061214] border-emerald-800/40'
+                  }`}>
+                    <FileText className={`w-3 h-3 shrink-0 ${isAbandoned ? 'text-rose-400' : 'text-emerald-400'}`} />
                     <span className="truncate">{match.notes}</span>
                   </div>
                 )}
@@ -610,11 +632,13 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                 {/* Match Card Bottom Actions */}
                 <div
                   className={`mt-2.5 pt-2 border-t flex items-center justify-between gap-1.5 ${
-                    isCompleted ? 'border-emerald-800/40' : 'border-slate-800/60'
+                    isAbandoned ? 'border-rose-800/40' : isCompleted ? 'border-emerald-800/40' : 'border-slate-800/60'
                   }`}
                 >
                   <div className="flex items-center gap-1.5 text-xs">
-                    {isCompleted ? (
+                    {isAbandoned ? (
+                      <span className="text-[11px] text-rose-400 font-mono font-semibold">Double Forfeit • 0 pts</span>
+                    ) : isCompleted ? (
                       <span className="text-[11px] text-emerald-400/80 font-mono">Full Time</span>
                     ) : (
                       <div className="flex items-center gap-1.5 text-slate-400 font-medium">

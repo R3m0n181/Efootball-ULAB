@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Award,
   Loader2,
+  Ban,
 } from 'lucide-react';
 import { Match, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -91,16 +92,17 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   if (!homeTeam || !awayTeam) return null;
 
+  const isAbandoned = match.status === 'abandoned';
   const isCompleted =
-    match.status === 'completed' &&
+    (match.status === 'completed' || isAbandoned) &&
     match.homeScore !== null &&
     match.awayScore !== null;
 
   const homeScore = match.homeScore ?? 0;
   const awayScore = match.awayScore ?? 0;
-  const homeWon = isCompleted && homeScore > awayScore;
-  const awayWon = isCompleted && awayScore > homeScore;
-  const isDraw = isCompleted && homeScore === awayScore;
+  const homeWon = isCompleted && !isAbandoned && homeScore > awayScore;
+  const awayWon = isCompleted && !isAbandoned && awayScore > homeScore;
+  const isDraw = isCompleted && !isAbandoned && homeScore === awayScore;
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,7 +205,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
               {/* Status Pill */}
               <div className="flex justify-center mb-3">
-                {isCompleted ? (
+                {isAbandoned ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold text-rose-400 bg-rose-950/80 border border-rose-500/40">
+                    <Ban className="w-3.5 h-3.5" />
+                    Match Abandoned • Double Forfeit
+                  </span>
+                ) : isCompleted ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     Full Time Result
@@ -244,7 +251,22 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
                 {/* Scoreboard Center */}
                 <div className="col-span-1 flex flex-col items-center justify-center">
-                  {isCompleted ? (
+                  {isAbandoned ? (
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5 bg-[#140b0d] px-3.5 py-2 rounded-xl border border-rose-600/40 shadow-md">
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-rose-300">
+                          0
+                        </span>
+                        <span className="text-slate-500 font-black text-xl">:</span>
+                        <span className="text-2xl sm:text-3xl font-black font-mono text-rose-300">
+                          0
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-rose-400 font-bold mt-1.5">
+                        Double Forfeit
+                      </span>
+                    </div>
+                  ) : isCompleted ? (
                     <div className="flex items-center gap-1.5 bg-[#08090d] px-3.5 py-2 rounded-xl border border-slate-700 shadow-md">
                       <span
                         className={`text-2xl sm:text-3xl font-black font-mono ${
@@ -308,6 +330,11 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
               {isCompleted && (
                 <div className="mt-4 pt-3 border-t border-slate-800/80 text-center">
                   <p className="text-xs font-semibold text-slate-200">
+                    {isAbandoned && (
+                      <span className="text-rose-300">
+                        Match abandoned by Double Forfeit. 0 points awarded to both clubs (+1 MP, 0 GD impact).
+                      </span>
+                    )}
                     {homeWon && (
                       <span className="text-emerald-400">
                         {homeTeam.clubName} ({homeTeam.managerName}) won by{' '}
@@ -472,7 +499,7 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition active:scale-95 cursor-pointer"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>{isCompleted ? 'Edit Score / SS' : 'Submit Result'}</span>
+                  <span>{isAbandoned ? 'Edit Match (Forfeited)' : isCompleted ? 'Edit Score / SS' : 'Submit Result'}</span>
                 </button>
               )}
               <button

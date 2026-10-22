@@ -19,7 +19,7 @@ export interface GoalEvent {
   isOwnGoal?: boolean;
 }
 
-export type MatchStatus = 'scheduled' | 'in_progress' | 'completed' | 'disputed';
+export type MatchStatus = 'scheduled' | 'in_progress' | 'completed' | 'disputed' | 'abandoned';
 
 export interface Match {
   id: string;
@@ -30,6 +30,7 @@ export interface Match {
   homeScore: number | null;
   awayScore: number | null;
   status: MatchStatus;
+  isDoubleForfeit?: boolean;
   playedAt?: string; // ISO string
   submittedAt?: string; // ISO string when result was submitted
   matchDate?: string; // Legacy/fallback date string

@@ -122,7 +122,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   const clubStats = useMemo(() => {
     if (!team) return null;
     const completed = teamMatches.filter(
-      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
     );
 
     let maxWinStreak = 0;
@@ -154,6 +154,15 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
 
     completed.forEach((m) => {
       const isHome = m.homeTeamId === team.id;
+
+      if (m.status === 'abandoned') {
+        if (isHome) homePlayed += 1;
+        else awayPlayed += 1;
+        currWinStreak = 0;
+        currUnbeaten = 0;
+        return;
+      }
+
       const myScore = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0);
       const oppScore = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0);
       const opponentId = isHome ? m.awayTeamId : m.homeTeamId;
@@ -643,11 +652,14 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                 const isHome = match.homeTeamId === team.id;
                 const opponentId = isHome ? match.awayTeamId : match.homeTeamId;
                 const opponent = teamMap.get(opponentId);
+                const isAbandoned = match.status === 'abandoned';
                 const isCompleted =
-                  match.status === 'completed' && match.homeScore !== null && match.awayScore !== null;
+                  (match.status === 'completed' || isAbandoned) && match.homeScore !== null && match.awayScore !== null;
 
-                let resultTag: 'W' | 'D' | 'L' | null = null;
-                if (isCompleted) {
+                let resultTag: 'W' | 'D' | 'L' | 'A' | null = null;
+                if (isAbandoned) {
+                  resultTag = 'A';
+                } else if (isCompleted) {
                   const teamScore = isHome ? match.homeScore! : match.awayScore!;
                   const oppScore = isHome ? match.awayScore! : match.homeScore!;
                   if (teamScore > oppScore) resultTag = 'W';
@@ -711,16 +723,19 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[9px] ${
-                                resultTag === 'W'
+                                resultTag === 'A'
+                                  ? 'bg-rose-950/60 text-rose-300 border border-rose-500/40'
+                                  : resultTag === 'W'
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                                   : resultTag === 'D'
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                   : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                               }`}
+                              title={resultTag === 'A' ? 'Abandoned (Double Forfeit)' : undefined}
                             >
                               {resultTag}
                             </span>
-                            <span className="font-mono font-bold text-white text-xs">
+                            <span className={`font-mono font-bold text-xs ${isAbandoned ? 'text-rose-300' : 'text-white'}`}>
                               {match.homeScore} - {match.awayScore}
                             </span>
                           </div>
@@ -746,16 +761,19 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                             <div className="flex items-center gap-1.5">
                               <span
                                 className={`w-5 h-5 rounded flex items-center justify-center font-mono font-bold text-[9px] ${
-                                  resultTag === 'W'
+                                  resultTag === 'A'
+                                    ? 'bg-rose-950/60 text-rose-300 border border-rose-500/40'
+                                    : resultTag === 'W'
                                     ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                                     : resultTag === 'D'
                                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                                     : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                                 }`}
+                                title={resultTag === 'A' ? 'Abandoned (Double Forfeit)' : undefined}
                               >
                                 {resultTag}
                               </span>
-                              <span className="font-mono font-bold text-white text-xs">
+                              <span className={`font-mono font-bold text-xs ${isAbandoned ? 'text-rose-300' : 'text-white'}`}>
                                 {match.homeScore} - {match.awayScore}
                               </span>
                             </div>

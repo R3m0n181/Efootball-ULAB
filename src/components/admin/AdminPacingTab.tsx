@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Clock,
   CheckCircle2,
@@ -12,6 +12,10 @@ import {
   Edit3,
   ExternalLink,
   Users,
+  Ban,
+  Filter,
+  ArrowUpDown,
+  Check,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../../types';
 import { TeamLogo } from '../TeamLogo';
@@ -51,6 +55,40 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
   const [selectedTeamFilter, setSelectedTeamFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'earliest' | 'latest' | 'team-asc'>('earliest');
 
+  // Unified dropdown open state: only one popover open at a time
+  const [openDropdown, setOpenDropdown] = useState<'round' | 'team' | 'exclude' | 'sort' | null>(null);
+
+  // Search terms inside filter popovers
+  const [roundSearchTerm, setRoundSearchTerm] = useState('');
+  const [teamSearchTerm, setTeamSearchTerm] = useState('');
+  const [excludeSearchTerm, setExcludeSearchTerm] = useState('');
+
+  // Exclusion filter state: omit matches where either team is in excludedClubIds
+  const [excludedClubIds, setExcludedClubIds] = useState<string[]>([]);
+  const filterControlsRef = useRef<HTMLDivElement>(null);
+
+  // Close any open dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        filterControlsRef.current &&
+        !filterControlsRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const toggleExcludeClub = (clubId: string) => {
+    setExcludedClubIds((prev) =>
+      prev.includes(clubId) ? prev.filter((id) => id !== clubId) : [...prev, clubId]
+    );
+  };
+
   // Rounds view state
   const [expandedRound, setExpandedRound] = useState<number | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'active' | 'unstarted'>('all');
@@ -78,11 +116,13 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
   }, [teams]);
 
   // Exclusively pending matches up to active matchday (MD 1 to MD activeMatchday)
+  // Note: Abandoned (Double Forfeit) matches are resolved and cleared from backlog
   const activePendingMatches = useMemo(() => {
     return matches.filter(
       (m) =>
         m.round <= activeMatchday &&
-        (m.status !== 'completed' || m.homeScore === null || m.awayScore === null)
+        m.status !== 'completed' &&
+        m.status !== 'abandoned'
     );
   }, [matches, activeMatchday]);
 
@@ -123,12 +163,71 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
     return maxTeamId ? { team: teamMap.get(maxTeamId), count: maxCount } : null;
   }, [activePendingMatches, teamMap]);
 
+  // Pending match counts per team in MD 1–activeMatchday
+  const pendingCountsByTeam = useMemo(() => {
+    const counts = new Map<string, number>();
+    activePendingMatches.forEach((m) => {
+      counts.set(m.homeTeamId, (counts.get(m.homeTeamId) || 0) + 1);
+      counts.set(m.awayTeamId, (counts.get(m.awayTeamId) || 0) + 1);
+    });
+    return counts;
+  }, [activePendingMatches]);
+
+  // Pending match counts per round in MD 1–activeMatchday
+  const pendingCountsByRound = useMemo(() => {
+    const counts = new Map<number, number>();
+    activePendingMatches.forEach((m) => {
+      counts.set(m.round, (counts.get(m.round) || 0) + 1);
+    });
+    return counts;
+  }, [activePendingMatches]);
+
+  // Currently selected team object
+  const selectedTeam = useMemo(() => {
+    return selectedTeamFilter !== 'all' ? teamMap.get(selectedTeamFilter) : null;
+  }, [selectedTeamFilter, teamMap]);
+
+  // Filtered list of clubs for exclusion search modal/dropdown
+  const filteredClubsForExclusion = useMemo(() => {
+    const list = [...teams];
+    list.sort((a, b) => a.clubName.localeCompare(b.clubName));
+    if (!excludeSearchTerm.trim()) return list;
+    const term = excludeSearchTerm.toLowerCase().trim();
+    return list.filter(
+      (t) =>
+        t.clubName.toLowerCase().includes(term) ||
+        t.managerName.toLowerCase().includes(term)
+    );
+  }, [teams, excludeSearchTerm]);
+
+  // Filtered list of clubs for Team filter popover
+  const filteredTeamsForSelection = useMemo(() => {
+    const list = [...teams];
+    list.sort((a, b) => a.clubName.localeCompare(b.clubName));
+    if (!teamSearchTerm.trim()) return list;
+    const term = teamSearchTerm.toLowerCase().trim();
+    return list.filter(
+      (t) =>
+        t.clubName.toLowerCase().includes(term) ||
+        t.managerName.toLowerCase().includes(term)
+    );
+  }, [teams, teamSearchTerm]);
+
   // Available rounds in active pending list
   const availablePendingRounds = useMemo(() => {
     const rounds: number[] = Array.from(new Set(activePendingMatches.map((m) => m.round)));
     rounds.sort((a: number, b: number) => a - b);
     return rounds;
   }, [activePendingMatches]);
+
+  // Filtered list of rounds for Round popover
+  const filteredRoundsForSelection = useMemo(() => {
+    if (!roundSearchTerm.trim()) return availablePendingRounds;
+    const term = roundSearchTerm.toLowerCase().trim();
+    return availablePendingRounds.filter((r) =>
+      `matchday ${r} md ${r} round ${r} ${r}`.toLowerCase().includes(term)
+    );
+  }, [availablePendingRounds, roundSearchTerm]);
 
   // Filtered and sorted queue list
   const displayedQueueMatches = useMemo(() => {
@@ -161,10 +260,18 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
       list = list.filter((m) => m.round === rNum);
     }
 
-    // Team filter
+    // Team filter (include only this club)
     if (selectedTeamFilter !== 'all') {
       list = list.filter(
         (m) => m.homeTeamId === selectedTeamFilter || m.awayTeamId === selectedTeamFilter
+      );
+    }
+
+    // Exclusion filter (omit matches featuring any of the selected clubs)
+    if (excludedClubIds.length > 0) {
+      const excludedSet = new Set(excludedClubIds);
+      list = list.filter(
+        (m) => !excludedSet.has(m.homeTeamId) && !excludedSet.has(m.awayTeamId)
       );
     }
 
@@ -192,6 +299,7 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
     searchTerm,
     selectedRoundFilter,
     selectedTeamFilter,
+    excludedClubIds,
     sortBy,
     teamMap,
   ]);
@@ -240,7 +348,10 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
       }
       rStat.matches.push(m);
       rStat.total += 1;
-      if (m.status === 'completed' && m.homeScore !== null && m.awayScore !== null) {
+      if (
+        (m.status === 'completed' && m.homeScore !== null && m.awayScore !== null) ||
+        m.status === 'abandoned'
+      ) {
         rStat.completed += 1;
         rStat.goals += (m.homeScore || 0) + (m.awayScore || 0);
       } else {
@@ -250,8 +361,12 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
 
     const list = Array.from(roundsMap.values()).map((r) => {
       const sortedMatches = [...r.matches].sort((a, b) => {
-        const aDone = a.status === 'completed' && a.homeScore !== null && a.awayScore !== null;
-        const bDone = b.status === 'completed' && b.homeScore !== null && b.awayScore !== null;
+        const aDone =
+          (a.status === 'completed' && a.homeScore !== null && a.awayScore !== null) ||
+          a.status === 'abandoned';
+        const bDone =
+          (b.status === 'completed' && b.homeScore !== null && b.awayScore !== null) ||
+          b.status === 'abandoned';
         if (aDone !== bDone) {
           return aDone ? 1 : -1;
         }
@@ -439,57 +554,696 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                 )}
               </div>
 
-              {/* Controls: Round, Team & Sort Dropdowns */}
-              <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-                {/* Round Filter */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 flex-1 sm:flex-initial">
-                  <select
-                    id="pending-filter-round"
-                    value={selectedRoundFilter}
-                    onChange={(e) => setSelectedRoundFilter(e.target.value)}
-                    className="w-full sm:w-auto bg-[#141824] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer font-mono"
+              {/* Controls: Round, Team, Exclude Clubs & Sort Dropdowns */}
+              <div
+                ref={filterControlsRef}
+                className="relative flex items-center gap-2 w-full sm:w-auto flex-wrap z-30"
+              >
+                {/* Mobile Backdrop Overlay */}
+                {openDropdown && (
+                  <div
+                    className="fixed inset-0 bg-black/50 backdrop-blur-[1px] z-40 sm:hidden animate-in fade-in duration-100"
+                    onClick={() => setOpenDropdown(null)}
+                  />
+                )}
+
+                {/* 1. Round Filter (Centered on X-axis) */}
+                <div className="sm:relative flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown((curr) => (curr === 'round' ? null : 'round'))}
+                    className={`w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
+                      selectedRoundFilter !== 'all'
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/25'
+                        : 'bg-[#141824] border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                    title="Filter fixtures by Matchday"
                   >
-                    <option value="all">Matchdays 1–{activeMatchday} ({availablePendingRounds.length})</option>
-                    {availablePendingRounds.map((r) => (
-                      <option key={r} value={r}>
-                        Matchday {r}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Calendar className={`w-3.5 h-3.5 shrink-0 ${selectedRoundFilter !== 'all' ? 'text-emerald-400' : 'text-slate-400'}`} />
+                      <span className="truncate">
+                        {selectedRoundFilter === 'all'
+                          ? `All MDs (1–${activeMatchday})`
+                          : `Matchday ${selectedRoundFilter}`}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${
+                        openDropdown === 'round' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Round Popover (Centered on X and Y axis on mobile) */}
+                  {openDropdown === 'round' && (
+                    <div className="fixed sm:absolute left-1/2 top-1/2 sm:top-full -translate-x-1/2 -translate-y-1/2 sm:translate-y-0 sm:mt-1.5 w-[calc(100vw-2rem)] max-w-sm sm:w-80 max-h-[85vh] sm:max-h-none overflow-hidden flex flex-col bg-[#10141f] border border-slate-700 rounded-xl shadow-2xl p-3 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Calendar className="w-3.5 h-3.5 text-emerald-400" />
+                            Matchday Filter
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Pending games up to active MD {activeMatchday}
+                          </p>
+                        </div>
+                        {selectedRoundFilter !== 'all' && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedRoundFilter('all')}
+                            className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer underline underline-offset-2"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      {availablePendingRounds.length > 5 && (
+                        <div className="relative">
+                          <Search className="w-3 h-3 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            placeholder="Search matchday..."
+                            value={roundSearchTerm}
+                            onChange={(e) => setRoundSearchTerm(e.target.value)}
+                            className="w-full pl-7 pr-6 py-1 bg-[#161c2a] border border-slate-700/80 rounded-md text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                          />
+                          {roundSearchTerm && (
+                            <button
+                              type="button"
+                              onClick={() => setRoundSearchTerm('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        {/* All Matchdays Option */}
+                        <div
+                          onClick={() => {
+                            setSelectedRoundFilter('all');
+                            setOpenDropdown(null);
+                          }}
+                          className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none ${
+                            selectedRoundFilter === 'all'
+                              ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-200'
+                              : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                              ALL
+                            </span>
+                            <div className="min-w-0">
+                              <span className="text-xs font-semibold block truncate leading-tight">
+                                Matchdays 1–{activeMatchday}
+                              </span>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                All chronological pending fixtures
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                              {activePendingMatches.length} pend
+                            </span>
+                            {selectedRoundFilter === 'all' && (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Individual Matchdays */}
+                        {filteredRoundsForSelection.map((r) => {
+                          const isSelected = selectedRoundFilter === r.toString();
+                          const pendingCount = pendingCountsByRound.get(r) || 0;
+                          return (
+                            <div
+                              key={r}
+                              onClick={() => {
+                                setSelectedRoundFilter(r.toString());
+                                setOpenDropdown(null);
+                              }}
+                              className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none ${
+                                isSelected
+                                  ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-200'
+                                  : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-6 h-6 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center text-[10px] font-mono font-bold">
+                                  {r}
+                                </span>
+                                <div className="min-w-0">
+                                  <span className="text-xs font-semibold block truncate leading-tight">
+                                    Matchday {r}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block truncate">
+                                    Round {r} backlog
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                                  {pendingCount} pend
+                                </span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                        <span className="font-mono text-[10px]">
+                          {availablePendingRounds.length} active MDs
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdown(null)}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold cursor-pointer text-xs"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Team Filter */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 flex-1 sm:flex-initial">
-                  <select
-                    id="pending-filter-team"
-                    value={selectedTeamFilter}
-                    onChange={(e) => setSelectedTeamFilter(e.target.value)}
-                    className="w-full sm:w-auto bg-[#141824] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer max-w-[140px] truncate"
+                {/* 2. Team Filter (Centered on X-axis) */}
+                <div className="sm:relative flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown((curr) => (curr === 'team' ? null : 'team'))}
+                    className={`w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
+                      selectedTeamFilter !== 'all'
+                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-300 hover:bg-blue-500/25'
+                        : 'bg-[#141824] border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                    title="Filter fixtures by specific club"
                   >
-                    <option value="all">All Clubs ({teams.length})</option>
-                    {teams.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.clubName}
-                      </option>
-                    ))}
-                  </select>
+                    <div className="flex items-center gap-1.5 truncate max-w-[150px]">
+                      <Users className={`w-3.5 h-3.5 shrink-0 ${selectedTeamFilter !== 'all' ? 'text-blue-400' : 'text-slate-400'}`} />
+                      <span className="truncate">
+                        {selectedTeamFilter === 'all'
+                          ? `All Clubs (${teams.length})`
+                          : selectedTeam?.clubName || 'Selected Club'}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${
+                        openDropdown === 'team' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Team Popover (Centered on X and Y axis on mobile) */}
+                  {openDropdown === 'team' && (
+                    <div className="fixed sm:absolute left-1/2 top-1/2 sm:top-full -translate-x-1/2 -translate-y-1/2 sm:translate-y-0 sm:mt-1.5 w-[calc(100vw-2rem)] max-w-sm sm:w-80 max-h-[85vh] sm:max-h-none overflow-hidden flex flex-col bg-[#10141f] border border-slate-700 rounded-xl shadow-2xl p-3 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Users className="w-3.5 h-3.5 text-blue-400" />
+                            Club Filter
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Filter fixtures for a specific club
+                          </p>
+                        </div>
+                        {selectedTeamFilter !== 'all' && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedTeamFilter('all')}
+                            className="text-[11px] text-blue-400 hover:text-blue-300 font-semibold cursor-pointer underline underline-offset-2"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Search club or manager..."
+                          value={teamSearchTerm}
+                          onChange={(e) => setTeamSearchTerm(e.target.value)}
+                          className="w-full pl-7 pr-6 py-1 bg-[#161c2a] border border-slate-700/80 rounded-md text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        />
+                        {teamSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setTeamSearchTerm('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        {/* All Clubs Option */}
+                        <div
+                          onClick={() => {
+                            setSelectedTeamFilter('all');
+                            setOpenDropdown(null);
+                          }}
+                          className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none ${
+                            selectedTeamFilter === 'all'
+                              ? 'bg-blue-500/15 border border-blue-500/30 text-blue-200'
+                              : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-[10px] font-bold text-slate-300">
+                              ALL
+                            </span>
+                            <div className="min-w-0">
+                              <span className="text-xs font-semibold block truncate leading-tight">
+                                All Clubs ({teams.length})
+                              </span>
+                              <span className="text-[10px] text-slate-400 block truncate">
+                                Fixtures across all clubs
+                              </span>
+                            </div>
+                          </div>
+                          {selectedTeamFilter === 'all' && (
+                            <Check className="w-3.5 h-3.5 text-blue-400 shrink-0 ml-2" />
+                          )}
+                        </div>
+
+                        {/* Individual Clubs */}
+                        {filteredTeamsForSelection.map((team) => {
+                          const isSelected = selectedTeamFilter === team.id;
+                          const pendingCount = pendingCountsByTeam.get(team.id) || 0;
+                          return (
+                            <div
+                              key={team.id}
+                              onClick={() => {
+                                setSelectedTeamFilter(team.id);
+                                setOpenDropdown(null);
+                              }}
+                              className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none ${
+                                isSelected
+                                  ? 'bg-blue-500/15 border border-blue-500/30 text-blue-200'
+                                  : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <TeamLogo team={team} size="xs" className="shrink-0" />
+                                <div className="min-w-0">
+                                  <span className="text-xs font-semibold block truncate leading-tight">
+                                    {team.clubName}
+                                  </span>
+                                  <span className="text-[10px] text-slate-400 block truncate">
+                                    @{team.managerName}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                <span
+                                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold ${
+                                    pendingCount > 0
+                                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                      : 'text-slate-500'
+                                  }`}
+                                >
+                                  {pendingCount} pend
+                                </span>
+                                {isSelected && (
+                                  <Check className="w-3.5 h-3.5 text-blue-400" />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                        <span className="font-mono text-[10px]">
+                          {teams.length} clubs available
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdown(null)}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold cursor-pointer text-xs"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Sort Order */}
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 flex-1 sm:flex-initial">
-                  <select
-                    id="pending-sort-order"
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="w-full sm:w-auto bg-[#141824] border border-slate-700 text-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer font-semibold"
+                {/* 3. Exclude Clubs Filter (Centered on X-axis) */}
+                <div className="sm:relative flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown((curr) => (curr === 'exclude' ? null : 'exclude'))}
+                    className={`w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
+                      excludedClubIds.length > 0
+                        ? 'bg-rose-500/15 border-rose-500/40 text-rose-300 hover:bg-rose-500/25'
+                        : 'bg-[#141824] border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                    title="Exclude specific clubs from pending fixtures"
                   >
-                    <option value="earliest">Earliest Match First (Default)</option>
-                    <option value="latest">Latest Round First</option>
-                    <option value="team-asc">Club Name (A-Z)</option>
-                  </select>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <Ban className={`w-3.5 h-3.5 shrink-0 ${excludedClubIds.length > 0 ? 'text-rose-400' : 'text-slate-400'}`} />
+                      <span className="truncate">
+                        {excludedClubIds.length === 0
+                          ? 'Except Clubs'
+                          : `Except (${excludedClubIds.length})`}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${
+                        openDropdown === 'exclude' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Exclusion Popover (Centered on X and Y axis on mobile) */}
+                  {openDropdown === 'exclude' && (
+                    <div className="fixed sm:absolute left-1/2 top-1/2 sm:top-full -translate-x-1/2 -translate-y-1/2 sm:translate-y-0 sm:mt-1.5 w-[calc(100vw-2rem)] max-w-sm sm:w-80 max-h-[85vh] sm:max-h-none overflow-hidden flex flex-col bg-[#10141f] border border-slate-700 rounded-xl shadow-2xl p-3 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <Ban className="w-3.5 h-3.5 text-rose-400" />
+                            Exclude Clubs Filter
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Omit fixtures featuring any selected club
+                          </p>
+                        </div>
+                        {excludedClubIds.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setExcludedClubIds([])}
+                            className="text-[11px] text-rose-400 hover:text-rose-300 font-semibold cursor-pointer underline underline-offset-2"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Search box inside popover */}
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-slate-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          placeholder="Search club or manager..."
+                          value={excludeSearchTerm}
+                          onChange={(e) => setExcludeSearchTerm(e.target.value)}
+                          className="w-full pl-7 pr-6 py-1 bg-[#161c2a] border border-slate-700/80 rounded-md text-[11px] text-slate-200 placeholder-slate-500 focus:outline-none focus:border-rose-500"
+                        />
+                        {excludeSearchTerm && (
+                          <button
+                            type="button"
+                            onClick={() => setExcludeSearchTerm('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Club list with checkboxes */}
+                      <div className="max-h-60 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        {filteredClubsForExclusion.length === 0 ? (
+                          <div className="py-4 text-center text-xs text-slate-500">
+                            No clubs found matching &quot;{excludeSearchTerm}&quot;
+                          </div>
+                        ) : (
+                          filteredClubsForExclusion.map((team) => {
+                            const isExcluded = excludedClubIds.includes(team.id);
+                            const pendingCount = pendingCountsByTeam.get(team.id) || 0;
+                            return (
+                              <div
+                                key={team.id}
+                                onClick={() => toggleExcludeClub(team.id)}
+                                className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg cursor-pointer transition select-none ${
+                                  isExcluded
+                                    ? 'bg-rose-500/15 border border-rose-500/30 text-rose-200'
+                                    : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <input
+                                    type="checkbox"
+                                    checked={isExcluded}
+                                    onChange={() => {}} // handled by parent onClick
+                                    className="rounded border-slate-700 text-rose-500 focus:ring-0 cursor-pointer pointer-events-none"
+                                  />
+                                  <TeamLogo team={team} size="xs" className="shrink-0" />
+                                  <div className="min-w-0">
+                                    <span className="text-xs font-semibold block truncate leading-tight">
+                                      {team.clubName}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 block truncate">
+                                      @{team.managerName}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span
+                                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded font-bold shrink-0 ml-2 ${
+                                    pendingCount > 0
+                                      ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                      : 'text-slate-500'
+                                  }`}
+                                >
+                                  {pendingCount} pend
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {/* Footer actions */}
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
+                        <span className="font-mono text-[10px]">
+                          {excludedClubIds.length} of {teams.length} excluded
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdown(null)}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold cursor-pointer text-xs"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. Sort Order Filter (Centered on X-axis) */}
+                <div className="sm:relative flex-1 sm:flex-initial">
+                  <button
+                    type="button"
+                    onClick={() => setOpenDropdown((curr) => (curr === 'sort' ? null : 'sort'))}
+                    className={`w-full sm:w-auto flex items-center justify-between sm:justify-start gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition cursor-pointer ${
+                      sortBy !== 'earliest'
+                        ? 'bg-purple-500/15 border-purple-500/40 text-purple-300 hover:bg-purple-500/25'
+                        : 'bg-[#141824] border-slate-700 text-slate-300 hover:text-white hover:border-slate-600'
+                    }`}
+                    title="Sort pending fixtures"
+                  >
+                    <div className="flex items-center gap-1.5 truncate">
+                      <ArrowUpDown className={`w-3.5 h-3.5 shrink-0 ${sortBy !== 'earliest' ? 'text-purple-400' : 'text-slate-400'}`} />
+                      <span className="truncate">
+                        {sortBy === 'earliest'
+                          ? 'Earliest First'
+                          : sortBy === 'latest'
+                          ? 'Latest MD First'
+                          : 'Club Name (A-Z)'}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={`w-3 h-3 text-slate-400 shrink-0 transition-transform ${
+                        openDropdown === 'sort' ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Sort Popover (Centered on X and Y axis on mobile) */}
+                  {openDropdown === 'sort' && (
+                    <div className="fixed sm:absolute left-1/2 top-1/2 sm:top-full -translate-x-1/2 -translate-y-1/2 sm:translate-y-0 sm:mt-1.5 w-[calc(100vw-2rem)] max-w-sm sm:w-72 max-h-[85vh] sm:max-h-none overflow-hidden flex flex-col bg-[#10141f] border border-slate-700 rounded-xl shadow-2xl p-3 z-50 space-y-2.5 animate-in fade-in zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <ArrowUpDown className="w-3.5 h-3.5 text-purple-400" />
+                            Sort Priority
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-0.5">
+                            Pending fixtures queue ordering
+                          </p>
+                        </div>
+                        {sortBy !== 'earliest' && (
+                          <button
+                            type="button"
+                            onClick={() => setSortBy('earliest')}
+                            className="text-[11px] text-purple-400 hover:text-purple-300 font-semibold cursor-pointer underline underline-offset-2"
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        {[
+                          {
+                            id: 'earliest' as const,
+                            label: 'Earliest Match First',
+                            badge: 'Default',
+                            sub: 'Chronological matchday & match order',
+                          },
+                          {
+                            id: 'latest' as const,
+                            label: 'Latest Round First',
+                            badge: `MD ${activeMatchday}→1`,
+                            sub: 'Reverse matchday progression',
+                          },
+                          {
+                            id: 'team-asc' as const,
+                            label: 'Club Name (A–Z)',
+                            badge: 'A–Z',
+                            sub: 'Alphabetical order by home team',
+                          },
+                        ].map((opt) => {
+                          const isSelected = sortBy === opt.id;
+                          return (
+                            <div
+                              key={opt.id}
+                              onClick={() => {
+                                setSortBy(opt.id);
+                                setOpenDropdown(null);
+                              }}
+                              className={`flex items-center justify-between px-2.5 py-2 rounded-lg cursor-pointer transition select-none ${
+                                isSelected
+                                  ? 'bg-purple-500/15 border border-purple-500/30 text-purple-200'
+                                  : 'hover:bg-slate-800/60 border border-transparent text-slate-300'
+                              }`}
+                            >
+                              <div className="min-w-0 pr-2">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-semibold leading-tight">
+                                    {opt.label}
+                                  </span>
+                                  {opt.badge && (
+                                    <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-slate-800 text-slate-400">
+                                      {opt.badge}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 block mt-0.5">
+                                  {opt.sub}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <Check className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="pt-2 border-t border-slate-800 flex items-center justify-end">
+                        <button
+                          type="button"
+                          onClick={() => setOpenDropdown(null)}
+                          className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold cursor-pointer text-xs"
+                        >
+                          Done
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Active Filters Chips Bar */}
+            {(excludedClubIds.length > 0 || selectedRoundFilter !== 'all' || selectedTeamFilter !== 'all') && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-800/80">
+                <span className="text-[11px] text-slate-400 flex items-center gap-1 font-semibold">
+                  <Filter className="w-3 h-3 text-emerald-400" />
+                  Active filters:
+                </span>
+
+                {/* Round Chip */}
+                {selectedRoundFilter !== 'all' && (
+                  <span className="inline-flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/15 text-emerald-200 border border-emerald-500/30">
+                    <Calendar className="w-3 h-3 text-emerald-400" />
+                    <span>Matchday {selectedRoundFilter}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRoundFilter('all')}
+                      className="text-emerald-400 hover:text-white cursor-pointer ml-0.5 p-0.5 rounded-full hover:bg-emerald-500/30"
+                      title="Clear matchday filter"
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                )}
+
+                {/* Team Chip */}
+                {selectedTeamFilter !== 'all' && selectedTeam && (
+                  <span className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-full text-[11px] font-medium bg-blue-500/15 text-blue-200 border border-blue-500/30">
+                    <TeamLogo team={selectedTeam} size="xs" className="w-3 h-3" />
+                    <span className="max-w-[120px] truncate">{selectedTeam.clubName}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedTeamFilter('all')}
+                      className="text-blue-400 hover:text-white cursor-pointer ml-0.5 p-0.5 rounded-full hover:bg-blue-500/30"
+                      title={`Clear ${selectedTeam.clubName} filter`}
+                    >
+                      <X className="w-2.5 h-2.5" />
+                    </button>
+                  </span>
+                )}
+
+                {/* Excluded Clubs Chips */}
+                {excludedClubIds.map((id) => {
+                  const team = teamMap.get(id);
+                  if (!team) return null;
+                  return (
+                    <span
+                      key={id}
+                      className="inline-flex items-center gap-1 pl-1.5 pr-1 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-200 border border-rose-500/30 hover:border-rose-400 transition"
+                    >
+                      <Ban className="w-2.5 h-2.5 text-rose-400" />
+                      <TeamLogo team={team} size="xs" className="w-3 h-3" />
+                      <span className="max-w-[120px] truncate">{team.clubName}</span>
+                      <button
+                        type="button"
+                        onClick={() => toggleExcludeClub(id)}
+                        className="text-rose-400 hover:text-white cursor-pointer ml-0.5 p-0.5 rounded-full hover:bg-rose-500/30"
+                        title={`Remove ${team.clubName} from exclusion`}
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRoundFilter('all');
+                    setSelectedTeamFilter('all');
+                    setExcludedClubIds([]);
+                  }}
+                  className="text-[11px] text-slate-400 hover:text-rose-300 underline underline-offset-2 ml-1 cursor-pointer font-medium"
+                >
+                  Clear all
+                </button>
+              </div>
+            )}
 
             {/* Informative Subtitle Bar */}
             <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80">
@@ -516,6 +1270,11 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                 <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 font-bold">
                   {displayedQueueMatches.length} pending
                 </span>
+                {excludedClubIds.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-rose-500/20 text-rose-300 border border-rose-500/30 shrink-0 font-bold">
+                    {excludedClubIds.length} {excludedClubIds.length === 1 ? 'club' : 'clubs'} excluded
+                  </span>
+                )}
               </div>
 
               <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
@@ -525,14 +1284,53 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
 
             {/* Matches List */}
             {displayedQueueMatches.length === 0 ? (
-              <div className="py-12 px-4 text-center space-y-2">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-6 h-6" />
-                </div>
-                <h4 className="text-sm font-bold text-white">No Pending Fixtures Found</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  All scheduled fixtures from Matchday 1 through Matchday {activeMatchday} are 100% completed!
-                </p>
+              <div className="py-12 px-4 text-center space-y-3">
+                {activePendingMatches.length === 0 ? (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+                      <CheckCircle2 className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-white">No Pending Fixtures Found</h4>
+                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                      All scheduled fixtures from Matchday 1 through Matchday {activeMatchday} are 100% completed!
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+                      <Filter className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-white">No Fixtures Match Active Filters</h4>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      {excludedClubIds.length > 0
+                        ? `All pending fixtures in this range were omitted by your filter criteria (${excludedClubIds.length} club${excludedClubIds.length > 1 ? 's' : ''} excluded).`
+                        : 'No pending fixtures match your current search, round, or team filters.'}
+                    </p>
+                    <div className="flex items-center justify-center gap-2 pt-1">
+                      {excludedClubIds.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setExcludedClubIds([])}
+                          className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 rounded-lg text-xs font-semibold cursor-pointer"
+                        >
+                          Clear Club Exclusions
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchTerm('');
+                          setSelectedRoundFilter('all');
+                          setSelectedTeamFilter('all');
+                          setExcludedClubIds([]);
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                      >
+                        Reset All Filters
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-slate-800/80">
@@ -790,15 +1588,18 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                   {/* Expanded Details: List of all matches in this round */}
                   {isExpanded && (() => {
                     const pendingMatches = r.matches.filter(
-                      (m) => m.status !== 'completed' || m.homeScore === null || m.awayScore === null
+                      (m) => m.status !== 'completed' && m.status !== 'abandoned'
                     );
                     const finishedMatches = r.matches.filter(
-                      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+                      (m) =>
+                        (m.status === 'completed' && m.homeScore !== null && m.awayScore !== null) ||
+                        m.status === 'abandoned'
                     );
 
                     const renderMatchItem = (m: Match, isDone: boolean) => {
                       const home = teamMap.get(m.homeTeamId);
                       const away = teamMap.get(m.awayTeamId);
+                      const isAbandoned = m.status === 'abandoned';
 
                       return (
                         <div
@@ -808,7 +1609,9 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                             onViewMatchDetail?.(m);
                           }}
                           className={`p-3 rounded-xl border transition cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs group ${
-                            isDone
+                            isAbandoned
+                              ? 'bg-[#181116] border-rose-800/60 hover:border-rose-700 hover:bg-[#20141c]'
+                              : isDone
                               ? 'bg-[#111420] border-slate-800/80 hover:border-slate-700 hover:bg-[#141828]'
                               : 'bg-[#14120e] border-amber-500/25 hover:border-amber-500/45 hover:bg-[#1a1610]'
                           }`}
@@ -830,12 +1633,16 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                             {/* Center Score / VS */}
                             <div
                               className={`shrink-0 px-2.5 py-1 rounded-lg font-mono font-bold text-xs text-center min-w-[54px] shadow-inner border ${
-                                isDone
+                                isAbandoned
+                                  ? 'bg-rose-950/40 border-rose-800/50 text-rose-300'
+                                  : isDone
                                   ? 'bg-[#0c0f17] border-slate-800/90 text-emerald-400'
                                   : 'bg-amber-950/40 border-amber-800/40 text-amber-300'
                               }`}
                             >
-                              {isDone ? (
+                              {isAbandoned ? (
+                                <span>0 - 0</span>
+                              ) : isDone ? (
                                 <span>
                                   {m.homeScore} - {m.awayScore}
                                 </span>
@@ -862,12 +1669,14 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                           <div className="flex items-center justify-between sm:justify-end gap-2 border-t sm:border-t-0 border-slate-800/60 pt-2 sm:pt-0">
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded ${
-                                isDone
+                                isAbandoned
+                                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                  : isDone
                                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                   : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                               }`}
                             >
-                              {isDone ? 'Completed' : 'Pending'}
+                              {isAbandoned ? 'Abandoned' : isDone ? 'Completed' : 'Pending'}
                             </span>
                             {!isDone && onEditMatch && (
                               <button
@@ -876,7 +1685,7 @@ export const AdminPacingTab: React.FC<AdminPacingTabProps> = ({
                                   e.stopPropagation();
                                   onEditMatch(m);
                                 }}
-                                className="px-2 py-0.5 bg-emerald-500 text-slate-950 font-bold rounded text-[10px] transition cursor-pointer"
+                                className="px-2 py-0.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded text-[10px] transition cursor-pointer"
                               >
                                 Submit
                               </button>

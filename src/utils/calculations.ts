@@ -60,10 +60,11 @@ export function calculateStandings(
     });
   });
 
-  // Sort completed matches by round and match order, filtered by phase if specified
+  // Sort completed and abandoned matches by round and match order, filtered by phase if specified
   const completedMatches = matches
     .filter((m) => {
-      if (m.status !== 'completed' || m.homeScore === null || m.awayScore === null) return false;
+      const isResolved = m.status === 'completed' || m.status === 'abandoned';
+      if (!isResolved || m.homeScore === null || m.awayScore === null) return false;
       if (phase === 'leg1') return m.round <= numLeg1Rounds;
       if (phase === 'leg2') return m.round > numLeg1Rounds;
       return true;
@@ -81,6 +82,20 @@ export function calculateStandings(
 
     const includeHome = venue === 'all' || venue === 'home';
     const includeAway = venue === 'all' || venue === 'away';
+
+    // Handle Double Forfeit / Abandoned Matches:
+    // User specification: Count as Played (+1 MP) with 0 points for both, 0-0 score with zero GD impact
+    if (m.status === 'abandoned') {
+      if (includeHome) {
+        homeStats.played += 1;
+        // 0 points added, 0 goals added
+      }
+      if (includeAway) {
+        awayStats.played += 1;
+        // 0 points added, 0 goals added
+      }
+      return;
+    }
 
     if (includeHome) {
       homeStats.played += 1;
