@@ -520,29 +520,17 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
             )}
           </div>
 
-          {/* Forfeits Section: Single Forfeit Located Just Over Double Forfeit Button */}
-          <div className="pt-2 border-t border-slate-800/80 space-y-2.5">
-            {/* 1. SINGLE FORFEIT OPTION (Just Over Double Forfeit Button) */}
-            <div className={`p-2.5 sm:p-3 rounded-xl border transition-all ${
-              singleForfeitTeam
-                ? 'bg-amber-950/20 border-amber-500/40'
-                : 'bg-[#141824] border-slate-800'
+          {/* Forfeits Section: Minimalist & Mobile-Friendly */}
+          <div className="pt-2 border-t border-slate-800/80 space-y-2">
+            {/* 1. SINGLE FORFEIT ROW (Placed Just Over Double Forfeit) */}
+            <div className={`p-2.5 rounded-xl border transition-colors ${
+              singleForfeitTeam ? 'bg-amber-950/20 border-amber-500/40' : 'bg-[#141824] border-slate-800'
             }`}>
               <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                    singleForfeitTeam ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">Single Forfeit (3-0 Walkover)</span>
-                    <span className="text-[10px] text-slate-400">
-                      Select which team forfeits. Opponent receives a 3-0 victory (+3 pts).
-                    </span>
-                  </div>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <AlertTriangle className={`w-3.5 h-3.5 shrink-0 ${singleForfeitTeam ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span className="text-xs font-bold text-white truncate">Single Forfeit (3-0 Walkover)</span>
                 </div>
-
                 {singleForfeitTeam && (
                   <button
                     type="button"
@@ -552,123 +540,97 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                       setAwayScore(0);
                       if (notes.startsWith('Single Forfeit:')) setNotes('');
                     }}
-                    className="px-2 py-0.5 rounded text-[10px] font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition cursor-pointer"
+                    className="text-[10px] font-semibold text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
                   >
-                    Clear Forfeit
+                    Reset
                   </button>
                 )}
               </div>
 
-              {/* Selector buttons for which team forfeits */}
+              {/* Compact Mobile-Friendly Buttons: Who Forfeits */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
                   onClick={() => handleToggleSingleForfeit('home')}
-                  className={`p-2 rounded-lg text-left transition cursor-pointer border flex flex-col justify-between gap-1 ${
+                  className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer border flex items-center justify-between gap-1.5 min-h-[40px] ${
                     singleForfeitTeam === 'home'
-                      ? 'bg-amber-500/25 border-amber-500 text-white shadow-sm shadow-amber-500/20 ring-1 ring-amber-500'
+                      ? 'bg-amber-500/25 border-amber-500 text-amber-200 ring-1 ring-amber-500 shadow-sm shadow-amber-500/20'
                       : 'bg-[#0a0c10] border-slate-700/80 hover:border-slate-600 text-slate-300 hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Home Forfeits</span>
-                    {singleForfeitTeam === 'home' && (
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    )}
-                  </div>
-                  <div className="text-xs font-bold truncate max-w-full">
-                    {homeTeam?.clubName || 'Home Club'}
-                  </div>
-                  <div className={`text-[10px] font-mono font-semibold ${
-                    singleForfeitTeam === 'home' ? 'text-amber-300' : 'text-slate-400'
+                  <span className="truncate text-xs font-bold">
+                    {homeTeam?.clubName || 'Home'} Forfeits
+                  </span>
+                  <span className={`text-[10px] font-mono shrink-0 px-1.5 py-0.5 rounded font-bold ${
+                    singleForfeitTeam === 'home' ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-800 text-slate-400'
                   }`}>
-                    Award: 0 - 3 (Away +3 pts)
-                  </div>
+                    0-3
+                  </span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => handleToggleSingleForfeit('away')}
-                  className={`p-2 rounded-lg text-left transition cursor-pointer border flex flex-col justify-between gap-1 ${
+                  className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition cursor-pointer border flex items-center justify-between gap-1.5 min-h-[40px] ${
                     singleForfeitTeam === 'away'
-                      ? 'bg-amber-500/25 border-amber-500 text-white shadow-sm shadow-amber-500/20 ring-1 ring-amber-500'
+                      ? 'bg-amber-500/25 border-amber-500 text-amber-200 ring-1 ring-amber-500 shadow-sm shadow-amber-500/20'
                       : 'bg-[#0a0c10] border-slate-700/80 hover:border-slate-600 text-slate-300 hover:text-white'
                   }`}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-[10px] uppercase font-bold text-slate-400">Away Forfeits</span>
-                    {singleForfeitTeam === 'away' && (
-                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    )}
-                  </div>
-                  <div className="text-xs font-bold truncate max-w-full">
-                    {awayTeam?.clubName || 'Away Club'}
-                  </div>
-                  <div className={`text-[10px] font-mono font-semibold ${
-                    singleForfeitTeam === 'away' ? 'text-amber-300' : 'text-slate-400'
+                  <span className="truncate text-xs font-bold">
+                    {awayTeam?.clubName || 'Away'} Forfeits
+                  </span>
+                  <span className={`text-[10px] font-mono shrink-0 px-1.5 py-0.5 rounded font-bold ${
+                    singleForfeitTeam === 'away' ? 'bg-amber-500/30 text-amber-200' : 'bg-slate-800 text-slate-400'
                   }`}>
-                    Award: 3 - 0 (Home +3 pts)
-                  </div>
+                    3-0
+                  </span>
                 </button>
               </div>
 
-              {/* Single Forfeit Banner details */}
+              {/* Minimal 1-line active indicator */}
               {singleForfeitTeam && (
-                <div className="mt-2 p-2 rounded-lg bg-amber-950/40 border border-amber-500/30 text-amber-200 text-[11px] flex items-start gap-2">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold text-amber-100">
-                      {singleForfeitTeam === 'home' ? awayTeam?.clubName : homeTeam?.clubName} awarded 3-0 victory!
-                    </span>
-                    <p className="text-[10px] text-amber-200/90 mt-0.5">
-                      Winning team receives <strong>+3 points</strong>, <strong>+3 Goal Difference</strong>, and a <strong>clean sheet</strong>. Forfeiting club receives 0 points and -3 Goal Difference.
-                    </p>
-                  </div>
+                <div className="mt-2 pt-2 border-t border-amber-500/20 text-[11px] text-amber-300/90 flex items-center justify-between gap-2">
+                  <span className="truncate">
+                    Award: <strong className="text-white">{singleForfeitTeam === 'home' ? awayTeam?.clubName : homeTeam?.clubName}</strong> (+3 pts, +3 GD)
+                  </span>
+                  <span className="font-mono font-bold text-amber-400 shrink-0">
+                    {singleForfeitTeam === 'home' ? '0 - 3' : '3 - 0'}
+                  </span>
                 </div>
               )}
             </div>
 
-            {/* 2. DOUBLE FORFEIT ACTION (Located Under Single Forfeit Option) */}
-            <div className={`p-2.5 rounded-xl border transition-all ${
-              isDoubleForfeit
-                ? 'bg-rose-950/20 border-rose-500/40'
-                : 'bg-[#141824] border-slate-800'
+            {/* 2. DOUBLE FORFEIT ROW (Located Directly Under Single Forfeit) */}
+            <div className={`p-2.5 rounded-xl border transition-colors ${
+              isDoubleForfeit ? 'bg-rose-950/20 border-rose-500/40' : 'bg-[#141824] border-slate-800'
             }`}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                    isDoubleForfeit ? 'bg-rose-500/20 text-rose-300' : 'bg-slate-800 text-slate-400'
-                  }`}>
-                    <Ban className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold text-white block">Double Forfeit (Match Abandoned)</span>
-                    <span className="text-[10px] text-slate-400">Award 0 pts to both clubs with 0-0 scoreline</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Ban className={`w-3.5 h-3.5 shrink-0 ${isDoubleForfeit ? 'text-rose-400' : 'text-slate-400'}`} />
+                  <div className="min-w-0">
+                    <span className="text-xs font-bold text-white block truncate">Double Forfeit (Abandon)</span>
+                    <span className="text-[10px] text-slate-400 truncate block">0-0 scoreline • 0 pts awarded</span>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={handleToggleDoubleForfeit}
-                  className={`px-3 py-1 rounded-md text-xs font-bold transition cursor-pointer border ${
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer border shrink-0 min-h-[36px] ${
                     isDoubleForfeit
                       ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 hover:bg-rose-500/30 ring-1 ring-rose-500'
                       : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
                   }`}
                 >
-                  {isDoubleForfeit ? 'Forfeit Active' : 'Declare Forfeit'}
+                  {isDoubleForfeit ? 'Active (0-0)' : 'Declare 0-0'}
                 </button>
               </div>
 
-              {/* Double Forfeit Notice Banner */}
+              {/* Minimal 1-line active indicator */}
               {isDoubleForfeit && (
-                <div className="mt-2 p-2 rounded-lg bg-rose-950/30 border border-rose-500/40 text-rose-300 text-[11px] flex items-start gap-2 animate-in fade-in duration-150">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-rose-200">Abandon Match &amp; Double Forfeit</p>
-                    <p className="text-[10px] text-rose-300/90 mt-0.5">
-                      Both teams are awarded <strong>+1 Match Played</strong>, <strong>0 Points</strong>, and <strong>0 Goal Difference impact</strong>. Status will be recorded as <em>Abandoned</em>.
-                    </p>
-                  </div>
+                <div className="mt-2 pt-2 border-t border-rose-500/20 text-[11px] text-rose-300/90 flex items-center justify-between gap-2">
+                  <span>Both clubs receive +1 MP with 0 points</span>
+                  <span className="font-mono font-bold text-rose-400 shrink-0">Abandoned</span>
                 </div>
               )}
             </div>
@@ -676,11 +638,11 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-3 border-t border-slate-800 bg-[#0a0c10] flex items-center justify-between">
+        <div className="p-3 border-t border-slate-800 bg-[#0a0c10] flex items-center justify-between gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-3 py-1.5 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer"
+            className="px-3 py-2 text-xs font-semibold text-slate-400 hover:text-white transition cursor-pointer min-h-[38px]"
           >
             Cancel
           </button>
@@ -689,7 +651,7 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
             type="button"
             disabled={isCompressing}
             onClick={handleSave}
-            className={`px-4 py-1.5 text-xs font-bold rounded-lg transition shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`px-4 py-2 text-xs font-bold rounded-lg transition shadow-sm active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed min-h-[38px] ${
               isDoubleForfeit
                 ? 'text-white bg-rose-600 hover:bg-rose-500 shadow-rose-600/30'
                 : singleForfeitTeam
@@ -698,23 +660,21 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
             }`}
           >
             {isCompressing ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
             ) : isDoubleForfeit ? (
-              <Ban className="w-3.5 h-3.5" />
-            ) : singleForfeitTeam ? (
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <Ban className="w-3.5 h-3.5 shrink-0" />
             ) : (
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
             )}
-            <span>
+            <span className="truncate">
               {isCompressing
                 ? 'Processing Image...'
                 : isDoubleForfeit
-                ? 'Confirm Double Forfeit (Abandon)'
+                ? 'Confirm Double Forfeit'
                 : singleForfeitTeam === 'home'
-                ? `Confirm Single Forfeit (${awayTeam?.clubName || 'Away'} 3-0)`
+                ? `Confirm Forfeit (${awayTeam?.shortCode || awayTeam?.clubName || 'Away'} 3-0)`
                 : singleForfeitTeam === 'away'
-                ? `Confirm Single Forfeit (${homeTeam?.clubName || 'Home'} 3-0)`
+                ? `Confirm Forfeit (${homeTeam?.shortCode || homeTeam?.clubName || 'Home'} 3-0)`
                 : 'Confirm & Update Standings'}
             </span>
           </button>

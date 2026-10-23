@@ -1580,54 +1580,54 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </div>
 
             {/* Quick Filter Status Pills */}
-            <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-slate-800/80 text-xs">
-              <span className="text-[11px] text-slate-400 mr-1 font-semibold">Criteria:</span>
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 sm:flex-wrap pt-2 border-t border-slate-800/80 text-xs">
+              <span className="text-[11px] text-slate-400 mr-0.5 font-semibold shrink-0">Criteria:</span>
               <button
                 onClick={() => setFilterMode('all')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 ${
                   filterMode === 'all'
                     ? 'bg-slate-700 text-white border border-slate-600'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
-                All Submissions ({completedCount})
+                All ({completedCount})
               </button>
               <button
                 onClick={() => setFilterMode('with-proof')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                   filterMode === 'with-proof'
                     ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
                 <Camera className="w-3 h-3 text-cyan-400" />
-                <span>With Screenshot ({matchesWithProof.length})</span>
+                <span>With SS ({matchesWithProof.length})</span>
               </button>
               <button
                 onClick={() => setFilterMode('missing-proof')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                   filterMode === 'missing-proof'
                     ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
                 <AlertTriangle className="w-3 h-3 text-amber-400" />
-                <span>Missing Proof ({matchesMissingProof.length})</span>
+                <span>Missing SS ({matchesMissingProof.length})</span>
               </button>
               <button
                 onClick={() => setFilterMode('high-scoring')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                   filterMode === 'high-scoring'
                     ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
                 }`}
               >
                 <Sparkles className="w-3 h-3 text-purple-400" />
-                <span>High Scoring (5+ Goals)</span>
+                <span>High Scoring (5+)</span>
               </button>
               <button
                 onClick={() => setFilterMode('draws')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 whitespace-nowrap ${
                   filterMode === 'draws'
                     ? 'bg-slate-700 text-white border border-slate-600'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -1637,7 +1637,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </button>
               <button
                 onClick={() => setFilterMode('forfeits')}
-                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer shrink-0 whitespace-nowrap ${
                   filterMode === 'forfeits'
                     ? 'bg-rose-500/25 text-rose-300 border border-rose-500/50'
                     : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
@@ -1842,21 +1842,21 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   )}
 
                                   {isDoubleForfeitMatch && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono">
-                                      <Ban className="w-3 h-3 text-rose-400" />
-                                      Double Forfeit (Abandoned)
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30 font-mono shrink-0 whitespace-nowrap">
+                                      <Ban className="w-3 h-3 text-rose-400 shrink-0" />
+                                      Double Forfeit
                                     </span>
                                   )}
 
                                   {isSingleForfeitMatch && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
-                                      <AlertTriangle className="w-3 h-3 text-amber-400" />
-                                      Single Forfeit (3-0 Walkover{forfeitedTeam ? ` • ${forfeitedTeam.clubName} forfeited` : ''})
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono shrink-0 whitespace-nowrap">
+                                      <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                                      Forfeit (3-0)
                                     </span>
                                   )}
 
                                   {match.submittedBy && (
-                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono shrink-0">
                                       By: {match.submittedBy}
                                     </span>
                                   )}
@@ -1871,24 +1871,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             </div>
 
                             {/* Middle Column: Scoreline & Match Teams */}
-                            <div className="flex-1 flex items-center justify-center gap-3 sm:gap-5 w-full md:w-auto my-1 md:my-0">
+                            <div className="flex-1 flex items-center justify-center gap-2 sm:gap-5 w-full md:w-auto my-1 md:my-0">
                               {/* Home Team */}
                               <button
                                 onClick={() => homeTeam && onSelectTeam(homeTeam)}
-                                className="flex items-center gap-2 text-right justify-end flex-1 min-w-0 group/home hover:opacity-80 transition cursor-pointer"
+                                className="flex items-center gap-1.5 sm:gap-2 text-right justify-end flex-1 min-w-0 group/home hover:opacity-80 transition cursor-pointer"
                               >
                                 <div className="min-w-0">
                                   <div
-                                    className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1.5 ${
+                                    className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1 ${
                                       isHomeWinner ? 'text-white' : 'text-slate-300'
                                     }`}
                                   >
                                     {isSingleForfeitMatch && match.forfeitedByTeamId === match.homeTeamId && (
-                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                                        Forfeited
+                                      <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
+                                        Forfeit
                                       </span>
                                     )}
-                                    <span>{homeTeam?.clubName || 'Home Club'}</span>
+                                    <span className="truncate">{homeTeam?.clubName || 'Home Club'}</span>
                                   </div>
                                   <div className="text-[10px] text-slate-400 truncate">
                                     {homeTeam?.managerName || ''}
@@ -1900,18 +1900,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               {/* Score Box */}
                               {isDoubleForfeitMatch ? (
                                 <div className="flex flex-col items-center shrink-0">
-                                  <div className="flex items-center justify-center px-3 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
-                                    <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                                  <div className="flex items-center justify-center px-2.5 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
+                                    <span className="text-sm sm:text-base font-black font-mono px-0.5 text-rose-400">0</span>
                                     <span className="text-xs font-bold text-rose-500/80 px-0.5">-</span>
-                                    <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                                    <span className="text-sm sm:text-base font-black font-mono px-0.5 text-rose-400">0</span>
                                   </div>
-                                  <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts awarded</span>
+                                  <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts</span>
                                 </div>
                               ) : isSingleForfeitMatch ? (
                                 <div className="flex flex-col items-center shrink-0">
-                                  <div className="flex items-center justify-center px-3 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
+                                  <div className="flex items-center justify-center px-2.5 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
                                     <span
-                                      className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                      className={`text-sm sm:text-base font-black font-mono px-0.5 ${
                                         isHomeWinner ? 'text-emerald-400' : 'text-rose-400'
                                       }`}
                                     >
@@ -1919,14 +1919,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                     </span>
                                     <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
                                     <span
-                                      className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                      className={`text-sm sm:text-base font-black font-mono px-0.5 ${
                                         isAwayWinner ? 'text-emerald-400' : 'text-rose-400'
                                       }`}
                                     >
                                       {awayScore}
                                     </span>
                                   </div>
-                                  <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">3-0 Walkover</span>
+                                  <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">Walkover</span>
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
@@ -2113,21 +2113,21 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             )}
 
                             {isDoubleForfeitMatch && (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono">
-                                <Ban className="w-3 h-3 text-rose-400" />
-                                Double Forfeit (Abandoned)
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30 font-mono shrink-0 whitespace-nowrap">
+                                <Ban className="w-3 h-3 text-rose-400 shrink-0" />
+                                Double Forfeit
                               </span>
                             )}
 
                             {isSingleForfeitMatch && (
-                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
-                                <AlertTriangle className="w-3 h-3 text-amber-400" />
-                                Single Forfeit (3-0 Walkover{forfeitedTeam ? ` • ${forfeitedTeam.clubName} forfeited` : ''})
+                              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.2 rounded font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono shrink-0 whitespace-nowrap">
+                                <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                                Forfeit (3-0)
                               </span>
                             )}
 
                             {match.submittedBy && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono shrink-0">
                                 By: {match.submittedBy}
                               </span>
                             )}
@@ -2142,24 +2142,24 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       </div>
 
                       {/* Middle Column: Scoreline & Match Teams */}
-                      <div className="flex-1 flex items-center justify-center gap-3 sm:gap-5 w-full md:w-auto my-1 md:my-0">
+                      <div className="flex-1 flex items-center justify-center gap-2 sm:gap-5 w-full md:w-auto my-1 md:my-0">
                         {/* Home Team */}
                         <button
                           onClick={() => homeTeam && onSelectTeam(homeTeam)}
-                          className="flex items-center gap-2 text-right justify-end flex-1 min-w-0 group/home hover:opacity-80 transition cursor-pointer"
+                          className="flex items-center gap-1.5 sm:gap-2 text-right justify-end flex-1 min-w-0 group/home hover:opacity-80 transition cursor-pointer"
                         >
                           <div className="min-w-0">
                             <div
-                              className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1.5 ${
+                              className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1 ${
                                 isHomeWinner ? 'text-white' : 'text-slate-300'
                               }`}
                             >
                               {isSingleForfeitMatch && match.forfeitedByTeamId === match.homeTeamId && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                                  Forfeited
+                                <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
+                                  Forfeit
                                 </span>
                               )}
-                              <span>{homeTeam?.clubName || 'Home Club'}</span>
+                              <span className="truncate">{homeTeam?.clubName || 'Home Club'}</span>
                             </div>
                             <div className="text-[10px] text-slate-400 truncate">
                               {homeTeam?.managerName || ''}
@@ -2171,18 +2171,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         {/* Score Box */}
                         {isDoubleForfeitMatch ? (
                           <div className="flex flex-col items-center shrink-0">
-                            <div className="flex items-center justify-center px-3 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
-                              <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                            <div className="flex items-center justify-center px-2.5 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
+                              <span className="text-sm sm:text-base font-black font-mono px-0.5 text-rose-400">0</span>
                               <span className="text-xs font-bold text-rose-500/80 px-0.5">-</span>
-                              <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                              <span className="text-sm sm:text-base font-black font-mono px-0.5 text-rose-400">0</span>
                             </div>
-                            <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts awarded</span>
+                            <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts</span>
                           </div>
                         ) : isSingleForfeitMatch ? (
                           <div className="flex flex-col items-center shrink-0">
-                            <div className="flex items-center justify-center px-3 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
+                            <div className="flex items-center justify-center px-2.5 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
                               <span
-                                className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                className={`text-sm sm:text-base font-black font-mono px-0.5 ${
                                   isHomeWinner ? 'text-emerald-400' : 'text-rose-400'
                                 }`}
                               >
@@ -2190,14 +2190,14 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </span>
                               <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
                               <span
-                                className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                className={`text-sm sm:text-base font-black font-mono px-0.5 ${
                                   isAwayWinner ? 'text-emerald-400' : 'text-rose-400'
                                 }`}
                               >
                                 {awayScore}
                               </span>
                             </div>
-                            <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">3-0 Walkover</span>
+                            <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">Walkover</span>
                           </div>
                         ) : (
                           <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
