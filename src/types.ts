@@ -31,6 +31,8 @@ export interface Match {
   awayScore: number | null;
   status: MatchStatus;
   isDoubleForfeit?: boolean;
+  isSingleForfeit?: boolean;
+  forfeitedByTeamId?: string;
   playedAt?: string; // ISO string
   submittedAt?: string; // ISO string when result was submitted
   matchDate?: string; // Legacy/fallback date string

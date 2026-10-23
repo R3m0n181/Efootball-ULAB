@@ -17,6 +17,7 @@ import {
   Award,
   Loader2,
   Ban,
+  AlertTriangle,
 } from 'lucide-react';
 import { Match, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -92,7 +93,8 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
 
   if (!homeTeam || !awayTeam) return null;
 
-  const isAbandoned = match.status === 'abandoned';
+  const isAbandoned = match.status === 'abandoned' || !!match.isDoubleForfeit;
+  const isSingleForfeit = !!match.isSingleForfeit;
   const isCompleted =
     (match.status === 'completed' || isAbandoned) &&
     match.homeScore !== null &&
@@ -103,6 +105,9 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
   const homeWon = isCompleted && !isAbandoned && homeScore > awayScore;
   const awayWon = isCompleted && !isAbandoned && awayScore > homeScore;
   const isDraw = isCompleted && !isAbandoned && homeScore === awayScore;
+  const forfeitingTeam = isSingleForfeit
+    ? (match.forfeitedByTeamId === match.homeTeamId ? homeTeam : awayTeam)
+    : null;
 
   const handleScreenshotUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -208,7 +213,12 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                 {isAbandoned ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold text-rose-400 bg-rose-950/80 border border-rose-500/40">
                     <Ban className="w-3.5 h-3.5" />
-                    Match Abandoned • Double Forfeit
+                    Match Abandoned • Double Forfeit (0 pts)
+                  </span>
+                ) : isSingleForfeit ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold text-amber-300 bg-amber-950/80 border border-amber-500/40">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                    Single Forfeit • 3-0 Walkover ({forfeitingTeam ? `${forfeitingTeam.clubName} Forfeited` : 'Walkover'})
                   </span>
                 ) : isCompleted ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-500/40">
@@ -244,9 +254,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <span className="text-[11px] text-slate-400 truncate max-w-full mt-0.5">
                     {homeTeam.managerName}
                   </span>
-                  <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-1.5 py-0.2 rounded mt-1.5 uppercase font-semibold">
-                    HOME
-                  </span>
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap justify-center">
+                    <span className="text-[9px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-1.5 py-0.2 rounded uppercase font-semibold">
+                      HOME
+                    </span>
+                    {isSingleForfeit && match.forfeitedByTeamId === match.homeTeamId && (
+                      <span className="text-[9px] font-mono text-rose-400 bg-rose-950/40 border border-rose-800/40 px-1.5 py-0.2 rounded font-bold">
+                        FORFEITED
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Scoreboard Center */}
@@ -264,6 +281,29 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                       </div>
                       <span className="text-[10px] font-mono text-rose-400 font-bold mt-1.5">
                         Double Forfeit
+                      </span>
+                    </div>
+                  ) : isSingleForfeit ? (
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1.5 bg-[#181308] px-3.5 py-2 rounded-xl border border-amber-500/50 shadow-md">
+                        <span
+                          className={`text-2xl sm:text-3xl font-black font-mono ${
+                            homeWon ? 'text-emerald-400' : 'text-rose-400'
+                          }`}
+                        >
+                          {match.homeScore}
+                        </span>
+                        <span className="text-slate-500 font-black text-xl">:</span>
+                        <span
+                          className={`text-2xl sm:text-3xl font-black font-mono ${
+                            awayWon ? 'text-emerald-400' : 'text-rose-400'
+                          }`}
+                        >
+                          {match.awayScore}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-400 font-bold mt-1.5">
+                        Walkover (3-0)
                       </span>
                     </div>
                   ) : isCompleted ? (
@@ -320,9 +360,16 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                   <span className="text-[11px] text-slate-400 truncate max-w-full mt-0.5">
                     {awayTeam.managerName}
                   </span>
-                  <span className="text-[9px] font-mono text-slate-400 bg-slate-800/80 border border-slate-700 px-1.5 py-0.2 rounded mt-1.5 uppercase font-semibold">
-                    AWAY
-                  </span>
+                  <div className="flex items-center gap-1 mt-1.5 flex-wrap justify-center">
+                    <span className="text-[9px] font-mono text-slate-400 bg-slate-800/80 border border-slate-700 px-1.5 py-0.2 rounded uppercase font-semibold">
+                      AWAY
+                    </span>
+                    {isSingleForfeit && match.forfeitedByTeamId === match.awayTeamId && (
+                      <span className="text-[9px] font-mono text-rose-400 bg-rose-950/40 border border-rose-800/40 px-1.5 py-0.2 rounded font-bold">
+                        FORFEITED
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
 

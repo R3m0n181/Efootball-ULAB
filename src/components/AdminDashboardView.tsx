@@ -33,6 +33,7 @@ import {
   Users,
   FileText,
   Share2,
+  Ban,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -88,7 +89,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRoundFilter, setSelectedRoundFilter] = useState<string>('all');
-  const [filterMode, setFilterMode] = useState<'all' | 'with-proof' | 'missing-proof' | 'high-scoring' | 'draws'>('all');
+  const [filterMode, setFilterMode] = useState<'all' | 'with-proof' | 'missing-proof' | 'high-scoring' | 'draws' | 'forfeits'>('all');
   const [dateFilterMode, setDateFilterMode] = useState<'all' | 'today' | 'yesterday' | 'last7' | 'custom'>('all');
   const [customDate, setCustomDate] = useState<string>('');
   const [viewLayout, setViewLayout] = useState<'timeline' | 'flat'>('timeline');
@@ -124,9 +125,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     return map;
   }, [teams]);
 
-  // Completed matches only for submission dashboard
+  // Completed matches (including abandoned / double forfeit & single forfeit) for submission dashboard
   const completedMatches = useMemo(() => {
-    return matches.filter((m) => m.status === 'completed');
+    return matches.filter((m) => m.status === 'completed' || m.status === 'abandoned');
   }, [matches]);
 
   const totalMatches = matches.length;
@@ -193,6 +194,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     }).length;
   }, [completedMatches]);
 
+  const forfeitMatchesCount = useMemo(() => {
+    return completedMatches.filter(
+      (m) => m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit
+    ).length;
+  }, [completedMatches]);
+
   const totalGoals = useMemo(() => {
     return completedMatches.reduce((sum, m) => sum + (m.homeScore || 0) + (m.awayScore || 0), 0);
   }, [completedMatches]);
@@ -216,6 +223,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         const notes = (m.notes || '').toLowerCase();
         const submitter = (m.submittedBy || '').toLowerCase();
         const roundStr = `round ${m.round} matchday ${m.round}`;
+        const isForfeit = m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit;
+        const forfeitStr = isForfeit ? 'forfeit double forfeit single forfeit walkover abandoned' : '';
 
         return (
           homeName.includes(term) ||
@@ -224,7 +233,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           awayManager.includes(term) ||
           notes.includes(term) ||
           submitter.includes(term) ||
-          roundStr.includes(term)
+          roundStr.includes(term) ||
+          forfeitStr.includes(term)
         );
       });
     }
@@ -243,7 +253,9 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     } else if (filterMode === 'high-scoring') {
       list = list.filter((m) => (m.homeScore || 0) + (m.awayScore || 0) >= 5);
     } else if (filterMode === 'draws') {
-      list = list.filter((m) => m.homeScore === m.awayScore);
+      list = list.filter((m) => m.homeScore === m.awayScore && m.status !== 'abandoned');
+    } else if (filterMode === 'forfeits') {
+      list = list.filter((m) => m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit);
     }
 
     // Real-Life Date Filter
@@ -1623,6 +1635,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               >
                 Draws
               </button>
+              <button
+                onClick={() => setFilterMode('forfeits')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                  filterMode === 'forfeits'
+                    ? 'bg-rose-500/25 text-rose-300 border border-rose-500/50'
+                    : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-slate-800'
+                }`}
+              >
+                <Ban className="w-3 h-3 text-rose-400" />
+                <span>Forfeits ({forfeitMatchesCount})</span>
+              </button>
             </div>
           </div>
 
@@ -1761,6 +1784,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         const awayScore = match.awayScore ?? 0;
                         const isHomeWinner = homeScore > awayScore;
                         const isAwayWinner = awayScore > homeScore;
+                        const isDoubleForfeitMatch = match.status === 'abandoned' || !!match.isDoubleForfeit;
+                        const isSingleForfeitMatch = !!match.isSingleForfeit;
+                        const forfeitedTeam = isSingleForfeitMatch
+                          ? (match.forfeitedByTeamId === match.homeTeamId ? homeTeam : awayTeam)
+                          : null;
 
                         const { dateStr, timeStr, relativeStr, dayKey } = formatMatchRealLifeDateTime(match);
                         const isTodayMatch = dayKey === getLocalDateKey(new Date());
@@ -1769,7 +1797,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         return (
                           <div
                             key={match.id}
-                            className="p-3 sm:p-4 hover:bg-[#141824]/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-3 group"
+                            className={`p-3 sm:p-4 hover:bg-[#141824]/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-3 group ${
+                              isDoubleForfeitMatch
+                                ? 'bg-rose-950/10'
+                                : isSingleForfeitMatch
+                                ? 'bg-amber-950/10'
+                                : ''
+                            }`}
                           >
                             {/* Left Column: Round Badge, Real-Life Date & Time, Submitter */}
                             <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
@@ -1807,6 +1841,20 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                     </span>
                                   )}
 
+                                  {isDoubleForfeitMatch && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono">
+                                      <Ban className="w-3 h-3 text-rose-400" />
+                                      Double Forfeit (Abandoned)
+                                    </span>
+                                  )}
+
+                                  {isSingleForfeitMatch && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                                      <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                      Single Forfeit (3-0 Walkover{forfeitedTeam ? ` • ${forfeitedTeam.clubName} forfeited` : ''})
+                                    </span>
+                                  )}
+
                                   {match.submittedBy && (
                                     <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
                                       By: {match.submittedBy}
@@ -1831,11 +1879,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               >
                                 <div className="min-w-0">
                                   <div
-                                    className={`text-xs sm:text-sm font-bold truncate ${
+                                    className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1.5 ${
                                       isHomeWinner ? 'text-white' : 'text-slate-300'
                                     }`}
                                   >
-                                    {homeTeam?.clubName || 'Home Club'}
+                                    {isSingleForfeitMatch && match.forfeitedByTeamId === match.homeTeamId && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                        Forfeited
+                                      </span>
+                                    )}
+                                    <span>{homeTeam?.clubName || 'Home Club'}</span>
                                   </div>
                                   <div className="text-[10px] text-slate-400 truncate">
                                     {homeTeam?.managerName || ''}
@@ -1845,23 +1898,55 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </button>
 
                               {/* Score Box */}
-                              <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
-                                <span
-                                  className={`text-sm sm:text-base font-black font-mono px-1 ${
-                                    isHomeWinner ? 'text-emerald-400' : 'text-slate-200'
-                                  }`}
-                                >
-                                  {homeScore}
-                                </span>
-                                <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
-                                <span
-                                  className={`text-sm sm:text-base font-black font-mono px-1 ${
-                                    isAwayWinner ? 'text-emerald-400' : 'text-slate-200'
-                                  }`}
-                                >
-                                  {awayScore}
-                                </span>
-                              </div>
+                              {isDoubleForfeitMatch ? (
+                                <div className="flex flex-col items-center shrink-0">
+                                  <div className="flex items-center justify-center px-3 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
+                                    <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                                    <span className="text-xs font-bold text-rose-500/80 px-0.5">-</span>
+                                    <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                                  </div>
+                                  <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts awarded</span>
+                                </div>
+                              ) : isSingleForfeitMatch ? (
+                                <div className="flex flex-col items-center shrink-0">
+                                  <div className="flex items-center justify-center px-3 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
+                                    <span
+                                      className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                        isHomeWinner ? 'text-emerald-400' : 'text-rose-400'
+                                      }`}
+                                    >
+                                      {homeScore}
+                                    </span>
+                                    <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
+                                    <span
+                                      className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                        isAwayWinner ? 'text-emerald-400' : 'text-rose-400'
+                                      }`}
+                                    >
+                                      {awayScore}
+                                    </span>
+                                  </div>
+                                  <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">3-0 Walkover</span>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
+                                  <span
+                                    className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                      isHomeWinner ? 'text-emerald-400' : 'text-slate-200'
+                                    }`}
+                                  >
+                                    {homeScore}
+                                  </span>
+                                  <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
+                                  <span
+                                    className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                      isAwayWinner ? 'text-emerald-400' : 'text-slate-200'
+                                    }`}
+                                  >
+                                    {awayScore}
+                                  </span>
+                                </div>
+                              )}
 
                               {/* Away Team */}
                               <button
@@ -1871,11 +1956,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                 {awayTeam && <TeamLogo team={awayTeam} size="sm" />}
                                 <div className="min-w-0">
                                   <div
-                                    className={`text-xs sm:text-sm font-bold truncate ${
+                                    className={`text-xs sm:text-sm font-bold truncate flex items-center justify-start gap-1.5 ${
                                       isAwayWinner ? 'text-white' : 'text-slate-300'
                                     }`}
                                   >
-                                    {awayTeam?.clubName || 'Away Club'}
+                                    <span>{awayTeam?.clubName || 'Away Club'}</span>
+                                    {isSingleForfeitMatch && match.forfeitedByTeamId === match.awayTeamId && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                        Forfeited
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-[10px] text-slate-400 truncate">
                                     {awayTeam?.managerName || ''}
@@ -1962,6 +2052,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   const awayScore = match.awayScore ?? 0;
                   const isHomeWinner = homeScore > awayScore;
                   const isAwayWinner = awayScore > homeScore;
+                  const isDoubleForfeitMatch = match.status === 'abandoned' || !!match.isDoubleForfeit;
+                  const isSingleForfeitMatch = !!match.isSingleForfeit;
+                  const forfeitedTeam = isSingleForfeitMatch
+                    ? (match.forfeitedByTeamId === match.homeTeamId ? homeTeam : awayTeam)
+                    : null;
 
                   const { dateStr, timeStr, relativeStr, dayKey } = formatMatchRealLifeDateTime(match);
                   const isTodayMatch = dayKey === getLocalDateKey(new Date());
@@ -1970,7 +2065,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   return (
                     <div
                       key={match.id}
-                      className="p-3 sm:p-4 hover:bg-[#141824]/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-3 group"
+                      className={`p-3 sm:p-4 hover:bg-[#141824]/60 transition flex flex-col md:flex-row items-start md:items-center justify-between gap-3 group ${
+                        isDoubleForfeitMatch
+                          ? 'bg-rose-950/10'
+                          : isSingleForfeitMatch
+                          ? 'bg-amber-950/10'
+                          : ''
+                      }`}
                     >
                       {/* Left Column: Round Badge, Real-Life Date & Time, Submitter */}
                       <div className="flex items-center gap-3 w-full md:w-auto shrink-0">
@@ -2011,6 +2112,20 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               </span>
                             )}
 
+                            {isDoubleForfeitMatch && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono">
+                                <Ban className="w-3 h-3 text-rose-400" />
+                                Double Forfeit (Abandoned)
+                              </span>
+                            )}
+
+                            {isSingleForfeitMatch && (
+                              <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono">
+                                <AlertTriangle className="w-3 h-3 text-amber-400" />
+                                Single Forfeit (3-0 Walkover{forfeitedTeam ? ` • ${forfeitedTeam.clubName} forfeited` : ''})
+                              </span>
+                            )}
+
                             {match.submittedBy && (
                               <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
                                 By: {match.submittedBy}
@@ -2035,11 +2150,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         >
                           <div className="min-w-0">
                             <div
-                              className={`text-xs sm:text-sm font-bold truncate ${
+                              className={`text-xs sm:text-sm font-bold truncate flex items-center justify-end gap-1.5 ${
                                 isHomeWinner ? 'text-white' : 'text-slate-300'
                               }`}
                             >
-                              {homeTeam?.clubName || 'Home Club'}
+                              {isSingleForfeitMatch && match.forfeitedByTeamId === match.homeTeamId && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                  Forfeited
+                                </span>
+                              )}
+                              <span>{homeTeam?.clubName || 'Home Club'}</span>
                             </div>
                             <div className="text-[10px] text-slate-400 truncate">
                               {homeTeam?.managerName || ''}
@@ -2049,23 +2169,55 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                         </button>
 
                         {/* Score Box */}
-                        <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
-                          <span
-                            className={`text-sm sm:text-base font-black font-mono px-1 ${
-                              isHomeWinner ? 'text-emerald-400' : 'text-slate-200'
-                            }`}
-                          >
-                            {homeScore}
-                          </span>
-                          <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
-                          <span
-                            className={`text-sm sm:text-base font-black font-mono px-1 ${
-                              isAwayWinner ? 'text-emerald-400' : 'text-slate-200'
-                            }`}
-                          >
-                            {awayScore}
-                          </span>
-                        </div>
+                        {isDoubleForfeitMatch ? (
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className="flex items-center justify-center px-3 py-1 bg-[#1e0e13] border border-rose-800/70 rounded-lg shadow-inner">
+                              <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                              <span className="text-xs font-bold text-rose-500/80 px-0.5">-</span>
+                              <span className="text-sm sm:text-base font-black font-mono px-1 text-rose-400">0</span>
+                            </div>
+                            <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5">0 pts awarded</span>
+                          </div>
+                        ) : isSingleForfeitMatch ? (
+                          <div className="flex flex-col items-center shrink-0">
+                            <div className="flex items-center justify-center px-3 py-1 bg-[#1e1708] border border-amber-500/60 rounded-lg shadow-inner">
+                              <span
+                                className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                  isHomeWinner ? 'text-emerald-400' : 'text-rose-400'
+                                }`}
+                              >
+                                {homeScore}
+                              </span>
+                              <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
+                              <span
+                                className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                  isAwayWinner ? 'text-emerald-400' : 'text-rose-400'
+                                }`}
+                              >
+                                {awayScore}
+                              </span>
+                            </div>
+                            <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5">3-0 Walkover</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center px-3 py-1 bg-[#181d2c] border border-slate-700/80 rounded-lg shrink-0 shadow-inner">
+                            <span
+                              className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                isHomeWinner ? 'text-emerald-400' : 'text-slate-200'
+                              }`}
+                            >
+                              {homeScore}
+                            </span>
+                            <span className="text-xs font-bold text-slate-500 px-0.5">-</span>
+                            <span
+                              className={`text-sm sm:text-base font-black font-mono px-1 ${
+                                isAwayWinner ? 'text-emerald-400' : 'text-slate-200'
+                              }`}
+                            >
+                              {awayScore}
+                            </span>
+                          </div>
+                        )}
 
                         {/* Away Team */}
                         <button
@@ -2075,11 +2227,16 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           {awayTeam && <TeamLogo team={awayTeam} size="sm" />}
                           <div className="min-w-0">
                             <div
-                              className={`text-xs sm:text-sm font-bold truncate ${
+                              className={`text-xs sm:text-sm font-bold truncate flex items-center justify-start gap-1.5 ${
                                 isAwayWinner ? 'text-white' : 'text-slate-300'
                               }`}
                             >
-                              {awayTeam?.clubName || 'Away Club'}
+                              <span>{awayTeam?.clubName || 'Away Club'}</span>
+                              {isSingleForfeitMatch && match.forfeitedByTeamId === match.awayTeamId && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                                  Forfeited
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-slate-400 truncate">
                               {awayTeam?.managerName || ''}

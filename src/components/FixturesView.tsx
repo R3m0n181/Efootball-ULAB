@@ -12,6 +12,7 @@ import {
   Camera,
   Eye,
   Ban,
+  AlertTriangle,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../types';
 import { TeamLogo } from './TeamLogo';
@@ -463,7 +464,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
             if (!homeTeam || !awayTeam) return null;
 
-            const isAbandoned = match.status === 'abandoned';
+            const isAbandoned = match.status === 'abandoned' || !!match.isDoubleForfeit;
+            const isSingleForfeit = !!match.isSingleForfeit;
             const isCompleted =
               (match.status === 'completed' || isAbandoned) &&
               match.homeScore !== null &&
@@ -479,6 +481,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                 className={`rounded-xl p-3.5 transition duration-200 flex flex-col justify-between relative overflow-hidden group ${
                   isAbandoned
                     ? 'bg-gradient-to-b from-[#180f14] via-[#141018] to-[#0c0d14] border-2 border-rose-500/70 shadow-lg shadow-rose-950/50 hover:border-rose-400 hover:shadow-rose-900/50 ring-1 ring-rose-500/30 cursor-pointer'
+                    : isSingleForfeit
+                    ? 'bg-gradient-to-b from-[#1c180e] via-[#16141a] to-[#0c0d14] border-2 border-amber-500/70 shadow-lg shadow-amber-950/50 hover:border-amber-400 hover:shadow-amber-900/50 ring-1 ring-amber-500/30 cursor-pointer'
                     : isCompleted
                     ? 'bg-gradient-to-b from-[#0c1f1c] via-[#0e1722] to-[#0a1318] border-2 border-emerald-500/70 shadow-lg shadow-emerald-950/50 hover:border-emerald-400 hover:shadow-emerald-900/50 ring-1 ring-emerald-500/30 cursor-pointer'
                     : 'bg-[#0f1219] border border-slate-800 hover:border-slate-700/80 shadow-md'
@@ -486,7 +490,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               >
                 {/* Ambient glow for completed matches */}
                 {isCompleted && (
-                  <div className={`absolute -right-8 -top-8 w-28 h-28 rounded-full blur-xl pointer-events-none ${isAbandoned ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`} />
+                  <div className={`absolute -right-8 -top-8 w-28 h-28 rounded-full blur-xl pointer-events-none ${
+                    isAbandoned ? 'bg-rose-500/10' : isSingleForfeit ? 'bg-amber-500/10' : 'bg-emerald-500/10'
+                  }`} />
                 )}
 
                 {/* Accent top gradient bar */}
@@ -499,7 +505,9 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
 
                 {/* Match Header */}
                 <div className="flex items-center justify-between text-[10px] text-slate-400 mb-2.5">
-                  <span className={`font-mono font-medium ${isAbandoned ? 'text-rose-300/90' : isCompleted ? 'text-emerald-300/90' : 'text-slate-400'}`}>
+                  <span className={`font-mono font-medium ${
+                    isAbandoned ? 'text-rose-300/90' : isSingleForfeit ? 'text-amber-300/90' : isCompleted ? 'text-emerald-300/90' : 'text-slate-400'
+                  }`}>
                     MD {match.round} • Match #{match.matchNumber}
                   </span>
                   <div className="flex items-center gap-1.5">
@@ -514,6 +522,11 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-rose-300 bg-rose-950 border border-rose-500/60 px-2 py-0.5 rounded-full font-mono shadow-xs shadow-rose-500/20">
                         <Ban className="w-3 h-3 text-rose-400" />
                         Abandoned
+                      </span>
+                    ) : isSingleForfeit ? (
+                      <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-300 bg-amber-950 border border-amber-500/60 px-2 py-0.5 rounded-full font-mono shadow-xs shadow-amber-500/20">
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                        Single Forfeit
                       </span>
                     ) : isCompleted ? (
                       <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-500/60 px-2 py-0.5 rounded-full font-mono shadow-xs shadow-emerald-500/20">
@@ -571,6 +584,27 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
                           <span className="text-base font-black font-mono text-rose-300">0</span>
                         </div>
                         <span className="text-[9px] font-mono text-rose-400 font-bold mt-0.5 whitespace-nowrap">Double Forfeit</span>
+                      </div>
+                    ) : isSingleForfeit ? (
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-1 bg-[#141208] px-2.5 py-1 rounded-lg border border-amber-500/50 shadow-inner group-hover:border-amber-400/70">
+                          <span
+                            className={`text-base font-black font-mono ${
+                              homeWon ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {match.homeScore}
+                          </span>
+                          <span className="text-slate-500 font-bold">:</span>
+                          <span
+                            className={`text-base font-black font-mono ${
+                              awayWon ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {match.awayScore}
+                          </span>
+                        </div>
+                        <span className="text-[9px] font-mono text-amber-400 font-bold mt-0.5 whitespace-nowrap">Single Forfeit (3-0)</span>
                       </div>
                     ) : isCompleted ? (
                       <div className="flex items-center gap-1 bg-[#061014] px-2.5 py-1 rounded-lg border border-emerald-500/40 shadow-inner group-hover:border-emerald-400/60">
