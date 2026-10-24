@@ -85,7 +85,7 @@ export function calculateStandings(
 
     // Handle Double Forfeit / Abandoned Matches:
     // User specification: Count as Played (+1 MP) with 0 points for both, 0-0 score with zero GD impact
-    if (m.status === 'abandoned') {
+    if (m.isDoubleForfeit || m.status === 'abandoned') {
       if (includeHome) {
         homeStats.played += 1;
         // 0 points added, 0 goals added
@@ -376,10 +376,15 @@ export function calculateTeamDefenseLeaderboard(
 
       if (hStats && aStats && m.homeScore !== null && m.awayScore !== null) {
         hStats.matchesPlayed += 1;
+        aStats.matchesPlayed += 1;
+
+        if (m.isDoubleForfeit || m.status === 'abandoned') {
+          return;
+        }
+
         hStats.goalsConceded += m.awayScore;
         if (m.awayScore === 0) hStats.cleanSheets += 1;
 
-        aStats.matchesPlayed += 1;
         aStats.goalsConceded += m.homeScore;
         if (m.homeScore === 0) aStats.cleanSheets += 1;
       }

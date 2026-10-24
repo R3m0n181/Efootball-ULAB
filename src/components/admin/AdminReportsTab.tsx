@@ -49,7 +49,7 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
 
   const completedMatches = useMemo(() => {
     return matches.filter(
-      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
     );
   }, [matches]);
 
@@ -58,7 +58,11 @@ export const AdminReportsTab: React.FC<AdminReportsTabProps> = ({
   }, [completedMatches, getProofForMatch]);
 
   const matchesMissingProof = useMemo(() => {
-    return completedMatches.filter((m) => !getProofForMatch(m));
+    return completedMatches.filter((m) => {
+      const isForfeit = m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit;
+      if (isForfeit) return false;
+      return !getProofForMatch(m);
+    });
   }, [completedMatches, getProofForMatch]);
 
   // CSV Export: All Fixtures & Results

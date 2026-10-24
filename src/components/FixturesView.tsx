@@ -55,7 +55,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
       const roundMatchList = matches.filter((m) => m.round === r);
       const isCompleted =
         roundMatchList.length > 0 &&
-        roundMatchList.every((m) => m.status === 'completed');
+        roundMatchList.every((m) => m.status === 'completed' || m.status === 'abandoned');
       if (!isCompleted) {
         return r;
       }
@@ -76,7 +76,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
     const initialRoundMatches = matches.filter((m) => m.round === activeMatchday);
     const isCompleted =
       initialRoundMatches.length > 0 &&
-      initialRoundMatches.every((m) => m.status === 'completed');
+      initialRoundMatches.every((m) => m.status === 'completed' || m.status === 'abandoned');
     return isCompleted ? 'all' : 'scheduled';
   });
 
@@ -93,7 +93,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
     const roundMatchList = matches.filter((m) => m.round === roundNum);
     const isCompleted =
       roundMatchList.length > 0 &&
-      roundMatchList.every((m) => m.status === 'completed');
+      roundMatchList.every((m) => m.status === 'completed' || m.status === 'abandoned');
     setStatusFilter(isCompleted ? 'all' : 'scheduled');
   };
 
@@ -112,7 +112,7 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
       const roundMatchList = matches.filter((m) => m.round === config.currentRound);
       const isCompleted =
         roundMatchList.length > 0 &&
-        roundMatchList.every((m) => m.status === 'completed');
+        roundMatchList.every((m) => m.status === 'completed' || m.status === 'abandoned');
       setStatusFilter(isCompleted ? 'all' : 'scheduled');
     }
   }, [config.currentRound]);
@@ -410,28 +410,6 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
           </div>
         )}
       </div>
-
-      {/* 2nd Leg Phase Notice Banner */}
-      {selectedRound > numLeg1Rounds && selectedTeamId === 'all' && (
-        <div className="bg-[#0c1424] border border-cyan-500/30 rounded-xl p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 text-xs text-cyan-200/90 shadow-sm">
-          <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 font-mono font-bold text-[10px] uppercase tracking-wider shrink-0">
-              2nd Leg Phase
-            </span>
-            <span className="font-medium text-slate-300">
-              No matches have been played in 2nd leg phase yet (Matchdays {numLeg1Rounds + 1}–{totalRounds}). All return fixtures are currently scheduled.
-            </span>
-          </div>
-          {activeMatchday <= numLeg1Rounds && (
-            <button
-              onClick={() => handleSelectRound(activeMatchday)}
-              className="px-2.5 py-1 rounded bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 border border-blue-500/40 font-mono font-bold text-[10px] transition cursor-pointer shrink-0"
-            >
-              Go to Active MD{activeMatchday}
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Fixture Match Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

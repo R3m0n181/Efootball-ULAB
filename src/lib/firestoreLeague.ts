@@ -195,12 +195,10 @@ export async function updateMatchInCloud(
   updatedMatch: Match,
   currentMatches: Match[]
 ): Promise<void> {
-  // If match has a screenshot attached, offload it into the dedicated match_proofs collection
-  if (updatedMatch.screenshotUrl) {
-    saveMatchProof(updatedMatch.id, updatedMatch.screenshotUrl).catch((err) => {
-      console.warn('Error persisting match proof:', err);
-    });
-  }
+  // Always synchronize match proof: save into match_proofs if present, delete from database and cache if removed/empty
+  saveMatchProof(updatedMatch.id, updatedMatch.screenshotUrl || null).catch((err) => {
+    console.warn('Error synchronizing match proof in cloud:', err);
+  });
 
   // Keep match payload lightweight in the main document
   const { screenshotUrl, ...cleanMatch } = updatedMatch;

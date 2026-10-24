@@ -155,7 +155,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
     completed.forEach((m) => {
       const isHome = m.homeTeamId === team.id;
 
-      if (m.status === 'abandoned') {
+      if (m.status === 'abandoned' || !!m.isDoubleForfeit) {
         if (isHome) homePlayed += 1;
         else awayPlayed += 1;
         currWinStreak = 0;
@@ -652,7 +652,8 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
                 const isHome = match.homeTeamId === team.id;
                 const opponentId = isHome ? match.awayTeamId : match.homeTeamId;
                 const opponent = teamMap.get(opponentId);
-                const isAbandoned = match.status === 'abandoned';
+                const isAbandoned = match.status === 'abandoned' || !!match.isDoubleForfeit;
+                const isSingleForfeit = !!match.isSingleForfeit;
                 const isCompleted =
                   (match.status === 'completed' || isAbandoned) && match.homeScore !== null && match.awayScore !== null;
 

@@ -487,6 +487,18 @@ export const MatchDetailModal: React.FC<MatchDetailModalProps> = ({
                     <span>Click to view full screenshot</span>
                   </div>
                 </div>
+              ) : isAbandoned || isSingleForfeit ? (
+                <div className="p-4 rounded-xl border border-dashed border-slate-800/80 bg-[#0f1219]/40 text-center flex flex-col items-center justify-center space-y-1.5">
+                  <div className="w-8 h-8 rounded-full bg-slate-800/60 flex items-center justify-center text-slate-400">
+                    <Ban className="w-4 h-4" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-300">Forfeit Result — No Screenshot Required</p>
+                  <p className="text-[10px] text-slate-500">
+                    {isAbandoned
+                      ? 'Double Forfeit fixture resolved with 0 points awarded to both clubs.'
+                      : 'Single Forfeit fixture resolved with awarded 3-0 walkover.'}
+                  </p>
+                </div>
               ) : (
                 <div className="p-4 rounded-xl border border-dashed border-slate-800 bg-[#0f1219]/60 text-center flex flex-col items-center justify-center space-y-2.5">
                   <div className="w-10 h-10 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-500">

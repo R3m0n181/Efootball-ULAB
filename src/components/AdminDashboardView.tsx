@@ -181,10 +181,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   }, [completedMatches, proofsMap]);
 
   const matchesMissingProof = useMemo(() => {
-    return completedMatches.filter((m) => !getProofForMatch(m));
+    return completedMatches.filter((m) => {
+      const isForfeit = m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit;
+      if (isForfeit) return false;
+      return !getProofForMatch(m);
+    });
   }, [completedMatches, proofsMap]);
 
-  const proofRate = completedCount > 0 ? Math.round((matchesWithProof.length / completedCount) * 100) : 0;
+  const nonForfeitCompletedMatches = useMemo(() => {
+    return completedMatches.filter(
+      (m) => !(m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit)
+    );
+  }, [completedMatches]);
+
+  const proofRate = nonForfeitCompletedMatches.length > 0
+    ? Math.round((matchesWithProof.length / nonForfeitCompletedMatches.length) * 100)
+    : 100;
 
   const pendingFlaggedCount = useMemo(() => {
     return completedMatches.filter((m) => {
@@ -249,11 +261,15 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     if (filterMode === 'with-proof') {
       list = list.filter((m) => !!getProofForMatch(m));
     } else if (filterMode === 'missing-proof') {
-      list = list.filter((m) => !getProofForMatch(m));
+      list = list.filter((m) => {
+        const isForfeit = m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit;
+        if (isForfeit) return false;
+        return !getProofForMatch(m);
+      });
     } else if (filterMode === 'high-scoring') {
       list = list.filter((m) => (m.homeScore || 0) + (m.awayScore || 0) >= 5);
     } else if (filterMode === 'draws') {
-      list = list.filter((m) => m.homeScore === m.awayScore && m.status !== 'abandoned');
+      list = list.filter((m) => m.homeScore === m.awayScore && m.status !== 'abandoned' && !m.isDoubleForfeit);
     } else if (filterMode === 'forfeits') {
       list = list.filter((m) => m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit);
     }
@@ -518,7 +534,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         if (!isTeamInMatch) return;
 
         totalTournamentCount++;
-        const isCompleted = m.status === 'completed' && m.homeScore !== null && m.awayScore !== null;
+        const isCompleted = (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null;
         if (isCompleted) {
           totalCompletedAllSeason++;
         }
@@ -581,7 +597,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // Total pending fixtures up to current active matchday
   const totalPendingUpToCurrentMD = useMemo(() => {
     return matches.filter(
-      (m) => m.round <= activeMatchday && (m.status !== 'completed' || m.homeScore === null || m.awayScore === null)
+      (m) => m.round <= activeMatchday && (m.status !== 'completed' && m.status !== 'abandoned' || m.homeScore === null || m.awayScore === null)
     ).length;
   }, [matches, activeMatchday]);
 
@@ -590,7 +606,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     return matches.filter((m) => m.round === activeMatchday);
   }, [matches, activeMatchday]);
 
-  const activeRoundCompletedCount = activeRoundMatches.filter((m) => m.status === 'completed').length;
+  const activeRoundCompletedCount = activeRoundMatches.filter((m) => m.status === 'completed' || m.status === 'abandoned').length;
   const activeRoundTotalCount = activeRoundMatches.length;
   const activeRoundProgress = activeRoundTotalCount > 0
     ? Math.round((activeRoundCompletedCount / activeRoundTotalCount) * 100)
@@ -601,7 +617,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     return Array.from({ length: totalRounds }, (_, i) => {
       const r = i + 1;
       const rMatches = matches.filter((m) => m.round === r);
-      const rCompleted = rMatches.filter((m) => m.status === 'completed').length;
+      const rCompleted = rMatches.filter((m) => m.status === 'completed' || m.status === 'abandoned').length;
       const rTotal = rMatches.length;
       let statusLabel = 'Scheduled';
       if (rTotal > 0 && rCompleted === rTotal) {
@@ -628,7 +644,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     const leg1Matches = matches.filter((m) => m.round <= numLeg1Rounds);
     const leg1Total = leg1Matches.length;
     const leg1CompletedMatches = leg1Matches.filter(
-      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
     );
     const leg1Completed = leg1CompletedMatches.length;
     const leg1Pending = leg1Total - leg1Completed;
@@ -642,16 +658,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
     const leg1HomeWins = leg1CompletedMatches.filter((m) => m.homeScore! > m.awayScore!).length;
     const leg1AwayWins = leg1CompletedMatches.filter((m) => m.awayScore! > m.homeScore!).length;
-    const leg1Draws = leg1CompletedMatches.filter((m) => m.homeScore === m.awayScore).length;
+    const leg1Draws = leg1CompletedMatches.filter((m) => m.homeScore === m.awayScore && !m.isDoubleForfeit && m.status !== 'abandoned').length;
 
     const leg1WithProof = leg1CompletedMatches.filter((m) => !!getProofForMatch(m)).length;
-    const leg1ProofRate = leg1Completed > 0 ? ((leg1WithProof / leg1Completed) * 100).toFixed(1) : '100.0';
+    const leg1NonForfeit = leg1CompletedMatches.filter((m) => !(m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit));
+    const leg1ProofRate = leg1NonForfeit.length > 0 ? ((leg1WithProof / leg1NonForfeit.length) * 100).toFixed(1) : '100.0';
 
     let leg1RoundsCompleted = 0;
     let leg1RoundsInProgress = 0;
     for (let r = 1; r <= numLeg1Rounds; r++) {
       const rM = leg1Matches.filter((m) => m.round === r);
-      const rC = rM.filter((m) => m.status === 'completed' && m.homeScore !== null).length;
+      const rC = rM.filter((m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null).length;
       if (rM.length > 0 && rC === rM.length) leg1RoundsCompleted++;
       else if (rC > 0) leg1RoundsInProgress++;
     }
@@ -660,7 +677,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     const leg2Matches = matches.filter((m) => m.round > numLeg1Rounds);
     const leg2Total = leg2Matches.length;
     const leg2CompletedMatches = leg2Matches.filter(
-      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
     );
     const leg2Completed = leg2CompletedMatches.length;
     const leg2Pending = leg2Total - leg2Completed;
@@ -674,17 +691,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
     const leg2HomeWins = leg2CompletedMatches.filter((m) => m.homeScore! > m.awayScore!).length;
     const leg2AwayWins = leg2CompletedMatches.filter((m) => m.awayScore! > m.homeScore!).length;
-    const leg2Draws = leg2CompletedMatches.filter((m) => m.homeScore === m.awayScore).length;
+    const leg2Draws = leg2CompletedMatches.filter((m) => m.homeScore === m.awayScore && !m.isDoubleForfeit && m.status !== 'abandoned').length;
 
     const leg2WithProof = leg2CompletedMatches.filter((m) => !!getProofForMatch(m)).length;
-    const leg2ProofRate = leg2Completed > 0 ? ((leg2WithProof / leg2Completed) * 100).toFixed(1) : '100.0';
+    const leg2NonForfeit = leg2CompletedMatches.filter((m) => !(m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit));
+    const leg2ProofRate = leg2NonForfeit.length > 0 ? ((leg2WithProof / leg2NonForfeit.length) * 100).toFixed(1) : '100.0';
 
     const leg2RoundsTotal = Math.max(1, totalRounds - numLeg1Rounds);
     let leg2RoundsCompleted = 0;
     let leg2RoundsInProgress = 0;
     for (let r = numLeg1Rounds + 1; r <= totalRounds; r++) {
       const rM = leg2Matches.filter((m) => m.round === r);
-      const rC = rM.filter((m) => m.status === 'completed' && m.homeScore !== null).length;
+      const rC = rM.filter((m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null).length;
       if (rM.length > 0 && rC === rM.length) leg2RoundsCompleted++;
       else if (rC > 0) leg2RoundsInProgress++;
     }
@@ -1992,6 +2010,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                                   <Camera className="w-3 h-3 text-cyan-400" />
                                   <span>View Proof</span>
                                 </button>
+                              ) : isDoubleForfeitMatch || isSingleForfeitMatch ? (
+                                <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[10px] font-medium">
+                                  <span>Forfeit (No SS)</span>
+                                </span>
                               ) : (
                                 <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-950/30 border border-amber-500/30 text-amber-400 text-[10px] font-semibold">
                                   <AlertTriangle className="w-3 h-3" />
@@ -2263,6 +2285,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                             <Camera className="w-3 h-3 text-cyan-400" />
                             <span>View Proof</span>
                           </button>
+                        ) : isDoubleForfeitMatch || isSingleForfeitMatch ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800/60 border border-slate-700/60 text-slate-400 text-[10px] font-medium">
+                            <span>Forfeit (No SS)</span>
+                          </span>
                         ) : (
                           <span className="flex items-center gap-1 px-2 py-1 rounded bg-amber-950/30 border border-amber-500/30 text-amber-400 text-[10px] font-semibold">
                             <AlertTriangle className="w-3 h-3" />

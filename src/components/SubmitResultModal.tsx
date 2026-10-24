@@ -11,7 +11,7 @@ import {
 import { Match, Team } from '../types';
 import { TeamLogo } from './TeamLogo';
 import { compressScreenshot } from '../utils/imageCompressor';
-import { fetchMatchProof } from '../lib/matchProofs';
+import { fetchMatchProof, saveMatchProof } from '../lib/matchProofs';
 
 interface SubmitResultModalProps {
   isOpen: boolean;
@@ -138,6 +138,10 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
         setSingleForfeitTeam(null);
         setHomeScore(0);
         setAwayScore(0);
+        setScreenshotPreview(null);
+        if (currentMatch?.id) {
+          saveMatchProof(currentMatch.id, null).catch(() => {});
+        }
         if (!notes || notes.includes('Forfeit')) {
           setNotes('Double Forfeit: 0 pts awarded to both clubs');
         }
@@ -162,6 +166,10 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
     } else {
       setIsDoubleForfeit(false);
       setSingleForfeitTeam(forfeiter);
+      setScreenshotPreview(null);
+      if (currentMatch?.id) {
+        saveMatchProof(currentMatch.id, null).catch(() => {});
+      }
       const winnerName = forfeiter === 'home'
         ? (awayTeam?.clubName || 'Away')
         : (homeTeam?.clubName || 'Home');
@@ -209,12 +217,14 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
     const isSingle = singleForfeitTeam !== null;
     const computedHomeScore = isDoubleForfeit ? 0 : isSingle ? (singleForfeitTeam === 'home' ? 0 : 3) : Number(homeScore);
     const computedAwayScore = isDoubleForfeit ? 0 : isSingle ? (singleForfeitTeam === 'home' ? 3 : 0) : Number(awayScore);
+    const isForfeitMatch = isDoubleForfeit || isSingle;
+    const finalScreenshotUrl = isForfeitMatch ? undefined : (screenshotPreview || undefined);
 
     const updated: Match = {
       ...currentMatch,
       homeScore: computedHomeScore,
       awayScore: computedAwayScore,
-      status: isDoubleForfeit ? 'abandoned' : 'completed',
+      status: 'completed',
       isDoubleForfeit: isDoubleForfeit ? true : undefined,
       isSingleForfeit: isSingle ? true : undefined,
       forfeitedByTeamId: isSingle
@@ -226,8 +236,15 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
         : isSingle && (!notes.trim() || notes.includes('Forfeit'))
         ? `Single Forfeit: 3-0 awarded to ${singleForfeitTeam === 'home' ? (awayTeam?.clubName || 'Away') : (homeTeam?.clubName || 'Home')}`
         : (notes.trim() || undefined),
-      screenshotUrl: screenshotPreview || undefined,
+      screenshotUrl: finalScreenshotUrl,
     };
+
+    // If no screenshot is attached (removed or forfeit), ensure proof is deleted from cloud database
+    if (!finalScreenshotUrl && currentMatch.id) {
+      saveMatchProof(currentMatch.id, null).catch((err) => {
+        console.warn('Error deleting proof on save:', err);
+      });
+    }
 
     onSaveMatch(updated);
     onClose();
@@ -493,7 +510,14 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setScreenshotPreview(null)}
+                  onClick={() => {
+                    setScreenshotPreview(null);
+                    if (currentMatch?.id) {
+                      saveMatchProof(currentMatch.id, null).catch((err) => {
+                        console.warn('Error deleting proof on remove click:', err);
+                      });
+                    }
+                  }}
                   className="px-2.5 py-1 text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 hover:bg-rose-900/60 border border-rose-800/40 rounded-lg transition cursor-pointer"
                 >
                   Remove SS

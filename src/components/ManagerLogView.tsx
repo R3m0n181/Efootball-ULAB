@@ -201,20 +201,23 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       const activeRoundMatches = allTeamMatches.filter((m) => m.round <= activeMatchday);
 
       const completedInActive = activeRoundMatches.filter(
-        (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+        (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
       );
 
       const pendingInActive = activeRoundMatches.filter(
-        (m) => m.status !== 'completed' || m.homeScore === null || m.awayScore === null
+        (m) => (m.status !== 'completed' && m.status !== 'abandoned') || m.homeScore === null || m.awayScore === null
       );
 
-      // Overall completed matches & proof compliance
+      // Overall completed matches & proof compliance (excluding forfeit matches that don't require SS)
       const allCompleted = allTeamMatches.filter(
-        (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+        (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
+      );
+      const nonForfeitCompleted = allCompleted.filter(
+        (m) => !(m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit)
       );
       const withProof = allCompleted.filter((m) => !!resolveProof(m));
       const proofCompliance =
-        allCompleted.length > 0 ? Math.round((withProof.length / allCompleted.length) * 100) : 100;
+        nonForfeitCompleted.length > 0 ? Math.round((withProof.length / nonForfeitCompleted.length) * 100) : 100;
 
       // Completion rate in active rounds
       const completionRate =
@@ -633,136 +636,155 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       )}
 
       {/* 4 Summary Cards (Role-tailored metrics) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
         {isAdmin ? (
           <>
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Pending Fixtures</span>
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Pending</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               </div>
-              <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-amber-400 font-mono leading-tight my-0.5">
                 {summary.totalBacklog}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1">
-                Across {summary.managersWithBacklog} backlogged clubs
+              <div className="text-[10px] text-slate-400 truncate">
+                Across {summary.managersWithBacklog} clubs
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Most Backlogged</span>
-                <Flame className="w-3.5 h-3.5 text-rose-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Most Backlogged</span>
+                <Flame className="w-3.5 h-3.5 text-rose-400 shrink-0" />
               </div>
-              <div className="text-base sm:text-lg font-bold text-white truncate">
-                {summary.mostLagging ? summary.mostLagging.team.clubName : 'None'}
+              <div className="flex items-center gap-1.5 min-w-0 my-0.5">
+                {summary.mostLagging?.team && (
+                  <TeamLogo team={summary.mostLagging.team} size="xs" className="shrink-0 scale-90" />
+                )}
+                <span className="text-xs sm:text-sm font-bold text-white truncate">
+                  {summary.mostLagging ? summary.mostLagging.team.clubName : 'None'}
+                </span>
               </div>
-              <div className="text-[11px] text-rose-400 mt-1 font-mono">
-                {summary.mostLagging?.pendingCount || 0} unplayed fixtures
+              <div className="text-[10px] text-rose-400 font-mono truncate">
+                {summary.mostLagging?.pendingCount || 0} unplayed
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Pacing Leader</span>
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Pacing Leader</span>
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               </div>
-              <div className="text-base sm:text-lg font-bold text-white truncate">
-                {summary.mostActive ? summary.mostActive.team.clubName : 'None'}
+              <div className="flex items-center gap-1.5 min-w-0 my-0.5">
+                {summary.mostActive?.team && (
+                  <TeamLogo team={summary.mostActive.team} size="xs" className="shrink-0 scale-90" />
+                )}
+                <span className="text-xs sm:text-sm font-bold text-white truncate">
+                  {summary.mostActive ? summary.mostActive.team.clubName : 'None'}
+                </span>
               </div>
-              <div className="text-[11px] text-emerald-400 mt-1 font-mono">
+              <div className="text-[10px] text-emerald-400 font-mono truncate">
                 {summary.mostActive?.completedActiveCount || 0} active played
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Active Rounds</span>
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Active Rounds</span>
+                <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               </div>
-              <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono leading-tight my-0.5">
                 {summary.partiallyPlayedRounds.length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 flex-wrap">
-                {summary.partiallyPlayedRounds.length > 0
-                  ? summary.partiallyPlayedRounds.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => onNavigateToFixtures?.(r)}
-                        className="px-1.5 py-0.2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition cursor-pointer"
-                        title={`View Round ${r} fixtures`}
-                      >
-                        R{r}
-                      </button>
-                    ))
-                  : 'All caught up'}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+                {summary.partiallyPlayedRounds.length > 0 ? (
+                  summary.partiallyPlayedRounds.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => onNavigateToFixtures?.(r)}
+                      className="px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[9px] font-mono font-bold transition cursor-pointer shrink-0"
+                      title={`View Round ${r} fixtures`}
+                    >
+                      R{r}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-slate-400">All caught up</span>
+                )}
               </div>
             </div>
           </>
         ) : (
           <>
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Active Matchdays</span>
-                <Calendar className="w-3.5 h-3.5 text-cyan-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Active MDs</span>
+                <Calendar className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               </div>
-              <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-cyan-400 font-mono leading-tight my-0.5">
                 {summary.partiallyPlayedRounds.length}
               </div>
-              <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1 flex-wrap">
-                {summary.partiallyPlayedRounds.length > 0
-                  ? summary.partiallyPlayedRounds.map((r) => (
-                      <button
-                        key={r}
-                        type="button"
-                        onClick={() => onNavigateToFixtures?.(r)}
-                        className="px-1.5 py-0.2 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[10px] font-mono font-bold transition cursor-pointer"
-                        title={`View Matchday ${r} fixtures`}
-                      >
-                        MD{r}
-                      </button>
-                    ))
-                  : 'All up to date'}
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 max-w-full">
+                {summary.partiallyPlayedRounds.length > 0 ? (
+                  summary.partiallyPlayedRounds.map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => onNavigateToFixtures?.(r)}
+                      className="px-1.5 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-[9px] font-mono font-bold transition cursor-pointer shrink-0"
+                      title={`View Matchday ${r} fixtures`}
+                    >
+                      MD{r}
+                    </button>
+                  ))
+                ) : (
+                  <span className="text-[10px] text-slate-400">All up to date</span>
+                )}
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>League Pacing</span>
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">League Pacing</span>
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               </div>
-              <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono">
+              <div className="text-xl sm:text-2xl font-black text-emerald-400 font-mono leading-tight my-0.5">
                 {summary.leaguePacingRate}%
               </div>
-              <div className="text-[11px] text-slate-400 mt-1">
-                Active round fixtures played
+              <div className="text-[10px] text-slate-400 truncate">
+                Active round fixtures
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>On Schedule</span>
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">On Schedule</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               </div>
-              <div className="text-xl sm:text-2xl font-black text-white font-mono">
+              <div className="text-xl sm:text-2xl font-black text-white font-mono leading-tight my-0.5">
                 {summary.managersOnSchedule}
                 <span className="text-xs text-slate-400 font-normal ml-1">/ {teams.length}</span>
               </div>
-              <div className="text-[11px] text-emerald-400 mt-1">
+              <div className="text-[10px] text-emerald-400 truncate">
                 Clubs with 0 backlog
               </div>
             </div>
 
-            <div className="bg-[#141824] border border-slate-800 rounded-xl p-3 sm:p-3.5">
-              <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
-                <span>Pacing Leader</span>
-                <Flame className="w-3.5 h-3.5 text-amber-400" />
+            <div className="bg-[#141824] border border-slate-800 rounded-xl p-2.5 sm:p-3 flex flex-col justify-between shadow-xs min-h-[76px] sm:min-h-[84px]">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wider">
+                <span className="truncate">Pacing Leader</span>
+                <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
               </div>
-              <div className="text-base sm:text-lg font-bold text-white truncate">
-                {summary.mostActive ? summary.mostActive.team.clubName : 'None'}
+              <div className="flex items-center gap-1.5 min-w-0 my-0.5">
+                {summary.mostActive?.team && (
+                  <TeamLogo team={summary.mostActive.team} size="xs" className="shrink-0 scale-90" />
+                )}
+                <span className="text-xs sm:text-sm font-bold text-white truncate">
+                  {summary.mostActive ? summary.mostActive.team.clubName : 'None'}
+                </span>
               </div>
-              <div className="text-[11px] text-slate-400 mt-1 font-mono">
+              <div className="text-[10px] text-slate-400 font-mono truncate">
                 {summary.mostActive?.completedActiveCount || 0} active played
               </div>
             </div>
