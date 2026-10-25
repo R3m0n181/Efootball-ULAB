@@ -511,7 +511,9 @@ export const TournamentRecordsView: React.FC<TournamentRecordsViewProps> = ({
     });
   }, [milestoneStats, pointsSortField, pointsSortDirection]);
 
-  const completedMatchesCount = matches.filter((m) => m.status === 'completed').length;
+  const completedMatchesCount = matches.filter(
+    (m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null
+  ).length;
 
   return (
     <div className="space-y-4 sm:space-y-6">

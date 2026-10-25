@@ -258,8 +258,8 @@ export const FixturesView: React.FC<FixturesViewProps> = ({
               const roundMatchList = matches.filter((m) => m.round === roundNum);
               const isCompleted =
                 roundMatchList.length > 0 &&
-                roundMatchList.every((m) => m.status === 'completed');
-              const hasStarted = roundMatchList.some((m) => m.status === 'completed');
+                roundMatchList.every((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null);
+              const hasStarted = roundMatchList.some((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null);
               const isActive = selectedRound === roundNum && selectedTeamId === 'all';
               const isCurrentActiveMatchday = roundNum === activeMatchday;
 

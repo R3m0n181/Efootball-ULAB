@@ -539,7 +539,12 @@ export function rebuildSchedulePreservingCompleted(
     (m) =>
       validTeamIds.has(m.homeTeamId) &&
       validTeamIds.has(m.awayTeamId) &&
-      (m.status === 'completed' || m.homeScore !== null || (m.goals && m.goals.length > 0))
+      (m.status === 'completed' ||
+        m.status === 'abandoned' ||
+        !!m.isDoubleForfeit ||
+        !!m.isSingleForfeit ||
+        m.homeScore !== null ||
+        (m.goals && m.goals.length > 0))
   );
 
   if (completedMatches.length === 0) {
@@ -573,6 +578,9 @@ export function rebuildSchedulePreservingCompleted(
           homeScore: hScore,
           awayScore: aScore,
           status: completed.status || ('completed' as const),
+          isDoubleForfeit: completed.isDoubleForfeit,
+          isSingleForfeit: completed.isSingleForfeit,
+          forfeitedByTeamId: completed.forfeitedByTeamId,
           playedAt: completed.playedAt || new Date().toISOString(),
           submittedAt: completed.submittedAt,
           matchDate: completed.matchDate,

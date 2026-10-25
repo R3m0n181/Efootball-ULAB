@@ -83,7 +83,7 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
         });
       }
     }
-  }, [initialMatch, matches, isOpen]);
+  }, [initialMatch, isOpen]);
 
   if (!isOpen) return null;
 
@@ -224,13 +224,14 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
       ...currentMatch,
       homeScore: computedHomeScore,
       awayScore: computedAwayScore,
-      status: 'completed',
-      isDoubleForfeit: isDoubleForfeit ? true : undefined,
-      isSingleForfeit: isSingle ? true : undefined,
+      status: isDoubleForfeit ? 'abandoned' : 'completed',
+      isDoubleForfeit: isDoubleForfeit ? true : false,
+      isSingleForfeit: isSingle ? true : false,
       forfeitedByTeamId: isSingle
         ? (singleForfeitTeam === 'home' ? currentMatch.homeTeamId : currentMatch.awayTeamId)
         : undefined,
       playedAt: new Date().toISOString(),
+      submittedAt: currentMatch.submittedAt || new Date().toISOString(),
       notes: isDoubleForfeit && !notes.trim()
         ? 'Double Forfeit: 0 pts awarded to both clubs'
         : isSingle && (!notes.trim() || notes.includes('Forfeit'))
@@ -291,8 +292,15 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                 const h = teamMap.get(m.homeTeamId);
                 const a = teamMap.get(m.awayTeamId);
                 if (!h || !a) return null;
-                const scoreLabel =
-                  m.status === 'completed' ? ` (Final: ${m.homeScore} - ${m.awayScore})` : ' [Scheduled]';
+                const isDouble = m.status === 'abandoned' || !!m.isDoubleForfeit;
+                const isSingle = !!m.isSingleForfeit;
+                const scoreLabel = isDouble
+                  ? ' [Double Forfeit • 0-0]'
+                  : isSingle
+                  ? ' [Single Forfeit • 3-0]'
+                  : (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null
+                  ? ` (Final: ${m.homeScore} - ${m.awayScore})`
+                  : ' [Scheduled]';
                 return (
                   <option key={m.id} value={m.id}>
                     MD {m.round}: {h.clubName} ({h.managerName}) vs {a.clubName} ({a.managerName}){scoreLabel}
@@ -646,7 +654,7 @@ export const SubmitResultModal: React.FC<SubmitResultModalProps> = ({
                       : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700 hover:text-white'
                   }`}
                 >
-                  {isDoubleForfeit ? 'Active (0-0)' : 'Declare 0-0'}
+                  {isDoubleForfeit ? 'Declared Forfeit' : 'Declare Double Forfeit'}
                 </button>
               </div>
 

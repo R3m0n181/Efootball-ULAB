@@ -106,21 +106,6 @@ export function loadTournamentState(): StoredState {
       let byesPerRound: Record<number, string> = rawByes ? JSON.parse(rawByes) : {};
       let parsedConfig: TournamentConfig = JSON.parse(rawConfig);
 
-      // Reorganize and squeeze 1st leg into MD 1-19 (10 matches/MD, no overlaps) and ensure 2nd leg is MD 20-38 unplayed
-      const squeezed = squeezeFirstLegAndCleanSecondLeg(matches, updatedTeams, parsedConfig);
-      matches = squeezed.matches;
-      byesPerRound = squeezed.byesPerRound;
-      parsedConfig = squeezed.config;
-
-      if (squeezed.modified) {
-        saveTournamentState({
-          teams: updatedTeams,
-          matches,
-          config: parsedConfig,
-          byesPerRound,
-        });
-      }
-
       return {
         teams: updatedTeams,
         matches,

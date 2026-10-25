@@ -167,7 +167,7 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       }
       r.total += 1;
       r.matches.push(m);
-      if (m.status === 'completed' && m.homeScore !== null && m.awayScore !== null) {
+      if ((m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null) {
         r.completed += 1;
       }
     });
@@ -201,16 +201,16 @@ export const ManagerLogView: React.FC<ManagerLogViewProps> = ({
       const activeRoundMatches = allTeamMatches.filter((m) => m.round <= activeMatchday);
 
       const completedInActive = activeRoundMatches.filter(
-        (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
+        (m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null
       );
 
       const pendingInActive = activeRoundMatches.filter(
-        (m) => (m.status !== 'completed' && m.status !== 'abandoned') || m.homeScore === null || m.awayScore === null
+        (m) => (m.status !== 'completed' && m.status !== 'abandoned' && !m.isDoubleForfeit) || m.homeScore === null || m.awayScore === null
       );
 
       // Overall completed matches & proof compliance (excluding forfeit matches that don't require SS)
       const allCompleted = allTeamMatches.filter(
-        (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
+        (m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null
       );
       const nonForfeitCompleted = allCompleted.filter(
         (m) => !(m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit)

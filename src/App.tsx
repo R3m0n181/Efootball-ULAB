@@ -124,48 +124,13 @@ export default function App() {
           ? cleanedTeams.length - 1
           : cleanedTeams.length;
 
-        const hadPsg = cloudState.teams.length !== cleanedTeams.length || cloudState.matches.length !== cleanedMatches.length;
         const pattern = cloudState.config.secondLegPattern || 'crescendo';
-
-        const needsRebuild =
-          hadPsg ||
-          cleanedMatches.length !== (isDouble ? (cleanedTeams.length % 2 === 0 ? (cleanedTeams.length - 1) * cleanedTeams.length : cleanedTeams.length * (cleanedTeams.length - 1)) : expectedTotalRounds * Math.floor(cleanedTeams.length / 2)) ||
-          cleanedMatches.some((m) => m.round > 38 || (m.homeTeamId === 'team-7' || m.awayTeamId === 'team-7'));
-
-        if (needsRebuild) {
-          const rebuilt = rebuildSchedulePreservingCompleted(cleanedMatches, cleanedTeams, isDouble, pattern);
-          cleanedMatches = rebuilt.matches;
-          cleanedByes = rebuilt.byesPerRound;
-        }
 
         const cleanedConfig: TournamentConfig = {
           ...cloudState.config,
           totalRounds: expectedTotalRounds,
           secondLegPattern: pattern,
         };
-
-        // If double round-robin and unplayed 2nd leg is symmetric, seamlessly upgrade to asymmetric schedule
-        if (cleanedConfig.format === 'double_round_robin') {
-          const { matches: upgradedMatches, byesPerRound: upgradedByes, updated } =
-            reorganizeUnplayedSecondLegAsymmetric(
-              cleanedMatches,
-              cleanedTeams,
-              cleanedByes,
-              pattern
-            );
-          if (updated || hadPsg || needsRebuild) {
-            const upgradedState = {
-              teams: cleanedTeams,
-              config: cleanedConfig,
-              matches: upgradedMatches,
-              byesPerRound: upgradedByes,
-            };
-            setTournamentState(upgradedState);
-            setIsCloudSynced(true);
-            saveLeagueStateToCloud(upgradedState).catch(console.error);
-            return;
-          }
-        }
 
         const finalState = {
           teams: cleanedTeams,
@@ -175,9 +140,6 @@ export default function App() {
         };
         setTournamentState(finalState);
         setIsCloudSynced(true);
-        if (hadPsg || needsRebuild) {
-          saveLeagueStateToCloud(finalState).catch(console.error);
-        }
       },
       (err) => {
         console.warn('Firestore real-time connection notice, local cache active:', err);
@@ -262,13 +224,18 @@ export default function App() {
 
   // Protected Handlers (Saved to Firebase Firestore with instant real-time broadcast)
   const handleSaveMatch = async (updatedMatch: Match) => {
-    const newMatches = matches.map((m) =>
-      m.id === updatedMatch.id ? updatedMatch : m
-    );
-    setTournamentState((prev) => ({
-      ...prev,
-      matches: newMatches,
-    }));
+    let nextMatches: Match[] = [];
+    setTournamentState((prev) => {
+      nextMatches = prev.matches.map((m) =>
+        m.id === updatedMatch.id ? updatedMatch : m
+      );
+      const nextState: StoredState = {
+        ...prev,
+        matches: nextMatches,
+      };
+      saveTournamentState(nextState);
+      return nextState;
+    });
     closeAllModals();
 
     const homeTeam = teams.find((t) => t.id === updatedMatch.homeTeamId);
@@ -284,7 +251,7 @@ export default function App() {
     setIsSuccessPopupOpen(true);
 
     try {
-      await updateMatchInCloud(updatedMatch, matches);
+      await updateMatchInCloud(updatedMatch, nextMatches);
     } catch (err) {
       console.error('Failed to sync match update to Firestore:', err);
     }
@@ -327,6 +294,10 @@ export default function App() {
         screenshotUrl: undefined,
         goals: [],
         notes: undefined,
+        isDoubleForfeit: false,
+        isSingleForfeit: false,
+        forfeitWinnerId: undefined,
+        forfeitLoserId: undefined,
         auditApproved: false,
         approvedBy: undefined,
         approvedAt: undefined,

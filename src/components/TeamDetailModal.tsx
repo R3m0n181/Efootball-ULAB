@@ -98,7 +98,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
         const roundMatches = matches.filter((m) => m.round === r);
         const isRoundFinished =
           roundMatches.length > 0 &&
-          roundMatches.every((m) => m.status === 'completed');
+          roundMatches.every((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null);
 
         items.push({
           type: 'bye',
@@ -122,7 +122,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
   const clubStats = useMemo(() => {
     if (!team) return null;
     const completed = teamMatches.filter(
-      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null
     );
 
     let maxWinStreak = 0;
@@ -580,7 +580,7 @@ export const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
               </h4>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-slate-400 font-mono">
-                  {teamMatches.filter((m) => m.status === 'completed').length} / {teamMatches.length} completed
+                  {teamMatches.filter((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null).length} / {teamMatches.length} completed
                 </span>
               </div>
             </div>

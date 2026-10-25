@@ -29,12 +29,23 @@ export const ShareFixtureCardModal: React.FC<ShareFixtureCardModalProps> = ({
 
   if (!homeTeam || !awayTeam) return null;
 
-  const isCompleted = match.status === 'completed';
+  const isDouble = match.status === 'abandoned' || !!match.isDoubleForfeit;
+  const isSingle = !!match.isSingleForfeit;
+  const isCompleted =
+    (match.status === 'completed' || isDouble) &&
+    match.homeScore !== null &&
+    match.awayScore !== null;
 
   const generateShareText = () => {
     let text = `🏆 eFootball Mobile Premier League - Matchday ${match.round}\n`;
     text += `⚽ ${homeTeam.clubName} (${homeTeam.managerName}) vs ${awayTeam.clubName} (${awayTeam.managerName})\n`;
-    if (isCompleted) {
+    if (isDouble) {
+      text += `🚫 RESULT: Abandoned (Double Forfeit • 0-0)\n`;
+      text += `📌 0 points awarded to both clubs\n`;
+    } else if (isSingle) {
+      text += `⚠️ RESULT: Single Forfeit (3-0 Walkover)\n`;
+      text += `📊 FINAL SCORE: ${homeTeam.clubName} ${match.homeScore} - ${match.awayScore} ${awayTeam.clubName}\n`;
+    } else if (isCompleted) {
       text += `📊 FINAL SCORE: ${homeTeam.clubName} ${match.homeScore} - ${match.awayScore} ${awayTeam.clubName}\n`;
       if (match.notes) {
         text += `📝 Notes: ${match.notes}\n`;
@@ -111,20 +122,34 @@ export const ShareFixtureCardModal: React.FC<ShareFixtureCardModalProps> = ({
 
               {/* Center Score or VS */}
               <div className="col-span-1 flex flex-col items-center justify-center">
-                {isCompleted ? (
+                {isDouble ? (
+                  <div className="bg-rose-950/70 px-2 py-1 rounded-lg border border-rose-500/60 shadow-inner">
+                    <span className="text-lg font-black font-mono text-rose-300">
+                      0 - 0
+                    </span>
+                    <span className="text-[8px] font-bold text-rose-400 uppercase block tracking-wider mt-0.5 whitespace-nowrap">
+                      Double Forfeit
+                    </span>
+                  </div>
+                ) : isCompleted ? (
                   <div className="bg-slate-900 px-2.5 py-1.5 rounded-lg border border-emerald-500/40 shadow-inner">
                     <span className="text-xl font-black font-mono text-emerald-300">
                       {match.homeScore} - {match.awayScore}
                     </span>
+                    <span className="text-[8px] text-slate-500 uppercase block mt-0.5">
+                      {isSingle ? 'Forfeit (3-0)' : 'Final'}
+                    </span>
                   </div>
                 ) : (
-                  <span className="text-xs font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                    VS
-                  </span>
+                  <div className="flex flex-col items-center">
+                    <span className="text-xs font-black text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
+                      VS
+                    </span>
+                    <span className="text-[8px] text-slate-500 uppercase mt-0.5">
+                      Scheduled
+                    </span>
+                  </div>
                 )}
-                <span className="text-[8px] text-slate-500 uppercase mt-0.5">
-                  {isCompleted ? 'Final' : 'Scheduled'}
-                </span>
               </div>
 
               {/* Away */}

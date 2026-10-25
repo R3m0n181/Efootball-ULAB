@@ -127,7 +127,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Completed matches (including abandoned / double forfeit & single forfeit) for submission dashboard
   const completedMatches = useMemo(() => {
-    return matches.filter((m) => m.status === 'completed' || m.status === 'abandoned');
+    return matches.filter(
+      (m) =>
+        (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit) &&
+        m.homeScore !== null &&
+        m.awayScore !== null
+    );
   }, [matches]);
 
   const totalMatches = matches.length;
@@ -200,9 +205,10 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   const pendingFlaggedCount = useMemo(() => {
     return completedMatches.filter((m) => {
+      const isForfeit = m.status === 'abandoned' || !!m.isDoubleForfeit || !!m.isSingleForfeit;
       const diff = Math.abs((m.homeScore || 0) - (m.awayScore || 0));
       const sum = (m.homeScore || 0) + (m.awayScore || 0);
-      return (diff >= 4 || sum >= 6) && !m.auditApproved;
+      return (isForfeit || diff >= 4 || sum >= 6) && !m.auditApproved;
     }).length;
   }, [completedMatches]);
 
@@ -442,7 +448,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     matches.forEach((m) => {
       const r = roundMap.get(m.round) || { total: 0, completed: 0, matches: [] };
       r.total += 1;
-      if (m.status === 'completed' && m.homeScore !== null) {
+      if ((m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null) {
         r.completed += 1;
       }
       r.matches.push(m);
@@ -464,7 +470,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       const data = roundMap.get(r);
       if (!data) return;
       data.matches.forEach((m) => {
-        if (m.status !== 'completed' || m.homeScore === null) {
+        const isPlayed = (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null;
+        if (!isPlayed) {
           totalActivePendingMatches++;
           teamBacklogMap.set(m.homeTeamId, (teamBacklogMap.get(m.homeTeamId) || 0) + 1);
           teamBacklogMap.set(m.awayTeamId, (teamBacklogMap.get(m.awayTeamId) || 0) + 1);
@@ -503,7 +510,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const earliestIncompleteRound = useMemo(() => {
     for (let r = 1; r <= totalRounds; r++) {
       const roundMatches = matches.filter((m) => m.round === r);
-      if (roundMatches.length > 0 && roundMatches.some((m) => m.status !== 'completed')) {
+      if (roundMatches.length > 0 && roundMatches.some((m) => m.status !== 'completed' && m.status !== 'abandoned' && !m.isDoubleForfeit)) {
         return r;
       }
     }

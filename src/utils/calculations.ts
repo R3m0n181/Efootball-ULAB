@@ -88,11 +88,27 @@ export function calculateStandings(
     if (m.isDoubleForfeit || m.status === 'abandoned') {
       if (includeHome) {
         homeStats.played += 1;
-        // 0 points added, 0 goals added
+        homeStats.lost += 1;
+        homeStats.form.push('L');
+        homeStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: awayTeam ? awayTeam.shortCode : 'AWY',
+          result: 'L',
+          score: '0-0 (DF)',
+          isHome: true,
+        });
       }
       if (includeAway) {
         awayStats.played += 1;
-        // 0 points added, 0 goals added
+        awayStats.lost += 1;
+        awayStats.form.push('L');
+        awayStats.recentMatches.push({
+          matchId: m.id,
+          opponentShortCode: homeTeam ? homeTeam.shortCode : 'HOM',
+          result: 'L',
+          score: '0-0 (DF)',
+          isHome: false,
+        });
       }
       return;
     }
@@ -101,14 +117,14 @@ export function calculateStandings(
       homeStats.played += 1;
       homeStats.goalsFor += m.homeScore;
       homeStats.goalsAgainst += m.awayScore;
-      if (m.awayScore === 0) homeStats.cleanSheets += 1;
+      if (m.awayScore === 0 && !m.isSingleForfeit) homeStats.cleanSheets += 1;
     }
 
     if (includeAway) {
       awayStats.played += 1;
       awayStats.goalsFor += m.awayScore;
       awayStats.goalsAgainst += m.homeScore;
-      if (m.homeScore === 0) awayStats.cleanSheets += 1;
+      if (m.homeScore === 0 && !m.isSingleForfeit) awayStats.cleanSheets += 1;
     }
 
     if (m.homeScore > m.awayScore) {
@@ -258,7 +274,7 @@ export function calculateTeamAttackLeaderboard(
   });
 
   matches
-    .filter((m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null)
+    .filter((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null)
     .forEach((m) => {
       const hStats = statsMap.get(m.homeTeamId);
       const aStats = statsMap.get(m.awayTeamId);
@@ -369,7 +385,7 @@ export function calculateTeamDefenseLeaderboard(
   });
 
   matches
-    .filter((m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null)
+    .filter((m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null && m.awayScore !== null)
     .forEach((m) => {
       const hStats = statsMap.get(m.homeTeamId);
       const aStats = statsMap.get(m.awayTeamId);
@@ -383,10 +399,10 @@ export function calculateTeamDefenseLeaderboard(
         }
 
         hStats.goalsConceded += m.awayScore;
-        if (m.awayScore === 0) hStats.cleanSheets += 1;
+        if (m.awayScore === 0 && !m.isSingleForfeit) hStats.cleanSheets += 1;
 
         aStats.goalsConceded += m.homeScore;
-        if (m.homeScore === 0) aStats.cleanSheets += 1;
+        if (m.homeScore === 0 && !m.isSingleForfeit) aStats.cleanSheets += 1;
       }
     });
 
@@ -502,7 +518,9 @@ export function getTournamentSummary(
   teams?: Team[]
 ) {
   const totalMatches = matches.length;
-  const completedMatches = matches.filter((m) => m.status === 'completed');
+  const completedMatches = matches.filter(
+    (m) => (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) && m.homeScore !== null
+  );
   const totalGoals = completedMatches.reduce(
     (sum, m) => sum + (m.homeScore || 0) + (m.awayScore || 0),
     0

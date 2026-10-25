@@ -15,7 +15,10 @@ export function getMatchHighsAndRecords(teams: Team[], matches: Match[]) {
   teams.forEach((t) => teamMap.set(t.id, t));
 
   const completed = matches.filter(
-    (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    (m) =>
+      (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) &&
+      m.homeScore !== null &&
+      m.awayScore !== null
   );
 
   // 1. Highest Combined Scoring Matches (e.g. 5-3 = 8 goals)
@@ -163,7 +166,12 @@ export function getMatchHighsAndRecords(teams: Team[], matches: Match[]) {
 
 export function getTeamStreaksAndForm(teams: Team[], matches: Match[]): TeamStreakStat[] {
   const completed = matches
-    .filter((m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null)
+    .filter(
+      (m) =>
+        (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) &&
+        m.homeScore !== null &&
+        m.awayScore !== null
+    )
     .sort((a, b) => a.round - b.round || a.matchNumber - b.matchNumber);
 
   return teams.map((team) => {
@@ -190,11 +198,17 @@ export function getTeamStreaksAndForm(teams: Team[], matches: Match[]): TeamStre
       const isHome = m.homeTeamId === team.id;
       const myScore = isHome ? (m.homeScore ?? 0) : (m.awayScore ?? 0);
       const oppScore = isHome ? (m.awayScore ?? 0) : (m.homeScore ?? 0);
+      const isDouble = m.isDoubleForfeit || m.status === 'abandoned';
 
       // Outcome
       let outcome: 'W' | 'D' | 'L' = 'D';
-      if (myScore > oppScore) outcome = 'W';
-      else if (myScore < oppScore) outcome = 'L';
+      if (isDouble) {
+        outcome = 'L';
+      } else if (myScore > oppScore) {
+        outcome = 'W';
+      } else if (myScore < oppScore) {
+        outcome = 'L';
+      }
       fullForm.push(outcome);
 
       // Win Streak
@@ -206,7 +220,7 @@ export function getTeamStreaksAndForm(teams: Team[], matches: Match[]): TeamStre
       }
 
       // Unbeaten Streak
-      if (outcome === 'W' || outcome === 'D') {
+      if (outcome === 'W' || (outcome === 'D' && !isDouble)) {
         currUnbeatenStreak += 1;
         if (currUnbeatenStreak > maxUnbeatenStreak) maxUnbeatenStreak = currUnbeatenStreak;
       } else {
@@ -214,7 +228,7 @@ export function getTeamStreaksAndForm(teams: Team[], matches: Match[]): TeamStre
       }
 
       // Clean Sheet Streak
-      if (oppScore === 0) {
+      if (oppScore === 0 && !isDouble && !m.isSingleForfeit) {
         currCleanSheetStreak += 1;
         if (currCleanSheetStreak > maxCleanSheetStreak) maxCleanSheetStreak = currCleanSheetStreak;
       } else {
@@ -222,7 +236,7 @@ export function getTeamStreaksAndForm(teams: Team[], matches: Match[]): TeamStre
       }
 
       // Scoring Streak
-      if (myScore > 0) {
+      if (myScore > 0 && !isDouble) {
         currScoringStreak += 1;
         if (currScoringStreak > maxScoringStreak) maxScoringStreak = currScoringStreak;
       } else {
@@ -251,7 +265,10 @@ export function getTeamHomeAwayStats(
   config: TournamentConfig
 ) {
   const completed = matches.filter(
-    (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    (m) =>
+      (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) &&
+      m.homeScore !== null &&
+      m.awayScore !== null
   );
 
   let totalHomeWins = 0;
@@ -387,7 +404,10 @@ export function getTeamHomeAwayStats(
 
 export function getTeamEfficiencyStats(teams: Team[], matches: Match[]): TeamEfficiencyStat[] {
   const completed = matches.filter(
-    (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+    (m) =>
+      (m.status === 'completed' || m.status === 'abandoned' || !!m.isDoubleForfeit) &&
+      m.homeScore !== null &&
+      m.awayScore !== null
   );
 
   return teams.map((team) => {

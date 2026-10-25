@@ -20,6 +20,7 @@ import {
   Edit3,
   ExternalLink,
   Loader2,
+  Ban,
 } from 'lucide-react';
 import { Match, Team, TournamentConfig } from '../../types';
 import { AdminUser } from '../../utils/auth';
@@ -54,7 +55,7 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
 }) => {
   const [copiedReport, setCopiedReport] = useState(false);
   const [activeSubFilter, setActiveSubFilter] = useState<
-    'pending' | 'approved' | 'all' | 'unverified' | 'blowouts' | 'high-scoring'
+    'pending' | 'approved' | 'all' | 'forfeits' | 'unverified' | 'blowouts' | 'high-scoring'
   >('pending');
 
   // Modal states for approving match
@@ -83,15 +84,17 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
 
   const completedMatches = useMemo(() => {
     return matches.filter(
-      (m) => m.status === 'completed' && m.homeScore !== null && m.awayScore !== null
+      (m) => (m.status === 'completed' || m.status === 'abandoned') && m.homeScore !== null && m.awayScore !== null
     );
   }, [matches]);
 
-  // Outlier detection:
-  // 1. Blowouts: goal difference >= 4
-  // 2. High-scoring: total goals >= 6
-  // 3. Unverified high-stake: (blowout OR high-scoring) AND no proof screenshot
+  // Outlier & Anomaly detection:
+  // 1. Forfeits (Double Forfeit & Single Forfeit walkovers)
+  // 2. Blowouts: goal difference >= 4
+  // 3. High-scoring: total goals >= 6
+  // 4. Unverified high-stake: (blowout OR high-scoring) AND no proof screenshot
   const anomalies = useMemo(() => {
+    const forfeitAnomalies: { match: Match; reason: string; proofUrl: string | null; type: 'double' | 'single' }[] = [];
     const blowouts: { match: Match; diff: number; proofUrl: string | null }[] = [];
     const highScoring: { match: Match; totalGoals: number; proofUrl: string | null }[] = [];
     const unverifiedAnomalies: { match: Match; reason: string }[] = [];
@@ -108,6 +111,37 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
       const diff = Math.abs(h - a);
       const sum = h + a;
       const proofUrl = getProofForMatch(m);
+
+      const isDouble = m.status === 'abandoned' || !!m.isDoubleForfeit;
+      const isSingle = !!m.isSingleForfeit;
+
+      // Check Forfeits First:
+      if (isDouble) {
+        forfeitAnomalies.push({
+          match: m,
+          reason: 'Double Forfeit (Abandon 0-0, 0 Pts)',
+          proofUrl: null,
+          type: 'double',
+        });
+        // Double forfeit awards 0 points to both clubs and is not a draw or clean sheet
+        return;
+      }
+
+      if (isSingle) {
+        const forfeiterTeam = m.forfeitedByTeamId === m.homeTeamId ? teamMap.get(m.homeTeamId) : teamMap.get(m.awayTeamId);
+        const forfeiterLabel = forfeiterTeam ? forfeiterTeam.clubName : 'Club';
+        forfeitAnomalies.push({
+          match: m,
+          reason: `Single Forfeit (3-0 Walkover • ${forfeiterLabel} forfeited)`,
+          proofUrl: null,
+          type: 'single',
+        });
+        totalGoals += sum;
+        if (h > a) homeWins++;
+        else if (a > h) awayWins++;
+        // Single forfeit does not award clean sheets
+        return;
+      }
 
       totalGoals += sum;
 
@@ -136,12 +170,15 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
       }
     });
 
+    // Sort forfeits by round descending
+    forfeitAnomalies.sort((a, b) => b.match.round - a.match.round);
     // Sort blowouts by margin descending
     blowouts.sort((a, b) => b.diff - a.diff);
     // Sort high scoring by total goals descending
     highScoring.sort((a, b) => b.totalGoals - a.totalGoals);
 
     return {
+      forfeitAnomalies,
       blowouts,
       highScoring,
       unverifiedAnomalies,
@@ -151,20 +188,32 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
       cleanSheets,
       totalGoals,
     };
-  }, [completedMatches, getProofForMatch]);
+  }, [completedMatches, getProofForMatch, teamMap]);
 
-  // Master unique map of all flagged outlier matches
+  // Master unique map of all flagged outlier matches: LIST FORFEIT ANOMALIES FIRST
   const allFlaggedMap = useMemo(() => {
     const map = new Map<string, { match: Match; reason: string; proofUrl: string | null }>();
 
-    anomalies.unverifiedAnomalies.forEach(({ match, reason }) => {
-      map.set(match.id, { match, reason: `⚠️ ${reason} (No Proof)`, proofUrl: null });
+    // 1. FORFEIT ANOMALIES ARE LISTED FIRST
+    anomalies.forfeitAnomalies.forEach(({ match, reason }) => {
+      map.set(match.id, { match, reason, proofUrl: null });
     });
+
+    // 2. Unverified anomalies
+    anomalies.unverifiedAnomalies.forEach(({ match, reason }) => {
+      if (!map.has(match.id)) {
+        map.set(match.id, { match, reason: `⚠️ ${reason} (No Proof)`, proofUrl: null });
+      }
+    });
+
+    // 3. Blowouts
     anomalies.blowouts.forEach(({ match, diff, proofUrl }) => {
       if (!map.has(match.id)) {
         map.set(match.id, { match, reason: `Blowout (+${diff})`, proofUrl });
       }
     });
+
+    // 4. High scoring
     anomalies.highScoring.forEach(({ match, totalGoals, proofUrl }) => {
       if (!map.has(match.id)) {
         map.set(match.id, { match, reason: `${totalGoals} Goals`, proofUrl });
@@ -194,6 +243,13 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
     }
     if (activeSubFilter === 'approved') {
       return approvedItems;
+    }
+    if (activeSubFilter === 'forfeits') {
+      const map = new Map<string, { match: Match; reason: string; proofUrl: string | null }>();
+      anomalies.forfeitAnomalies.forEach(({ match, reason }) => {
+        map.set(match.id, { match, reason, proofUrl: null });
+      });
+      return Array.from(map.values());
     }
     if (activeSubFilter === 'unverified') {
       const map = new Map<string, { match: Match; reason: string; proofUrl: string | null }>();
@@ -226,6 +282,7 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
       `🛡️ *${config.name} — Fair-Play & Anomaly Audit Report* 🛡️`,
       `Total Completed Matches: ${completedMatches.length}`,
       `Total Flagged Outliers: ${allFlaggedItems.length}`,
+      `• Forfeits & Walkovers: ${anomalies.forfeitAnomalies.length}`,
       `• Awaiting Admin Approval: ${pendingApprovalItems.length}`,
       `• Commissioner Approved: ${approvedItems.length}`,
       `Blowout Results (Margin ≥ 4): ${anomalies.blowouts.length}`,
@@ -237,8 +294,9 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
         ? pendingApprovalItems.map(({ match, reason, proofUrl }) => {
             const home = teamMap.get(match.homeTeamId);
             const away = teamMap.get(match.awayTeamId);
+            const isForfeit = match.isDoubleForfeit || match.isSingleForfeit;
             return `• Round ${match.round}: ${home?.clubName} ${match.homeScore}-${match.awayScore} ${away?.clubName} [${reason}] ${
-              proofUrl ? '📷 Proof Attached' : '⚠️ NO PROOF'
+              proofUrl ? '📷 Proof Attached' : isForfeit ? '🚫 Forfeit Result' : '⚠️ NO PROOF'
             }`;
           })
         : ['✅ All flagged outlier matches have been reviewed and approved.']),
@@ -537,6 +595,18 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
             </button>
 
             <button
+              onClick={() => setActiveSubFilter('forfeits')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center gap-1 ${
+                activeSubFilter === 'forfeits'
+                  ? 'bg-amber-500/25 text-amber-300 border border-amber-500/50 shadow-sm'
+                  : 'bg-[#141824] text-slate-400 hover:text-slate-200 border border-transparent'
+              }`}
+            >
+              <Ban className="w-3 h-3 text-amber-400" />
+              <span>Forfeits ({anomalies.forfeitAnomalies.length})</span>
+            </button>
+
+            <button
               onClick={() => setActiveSubFilter('unverified')}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer ${
                 activeSubFilter === 'unverified'
@@ -646,6 +716,11 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/25">
                           <Camera className="w-3 h-3" />
                           <span>Proof Attached</span>
+                        </span>
+                      ) : (match.isDoubleForfeit || match.isSingleForfeit) ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-800/60 px-2 py-0.5 rounded border border-slate-700/60">
+                          <Ban className="w-3 h-3 text-amber-400/80" />
+                          <span>Forfeit (No SS)</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/25">
@@ -842,6 +917,16 @@ export const AdminFairPlayTab: React.FC<AdminFairPlayTabProps> = ({
                   >
                     <Camera className="w-3 h-3" /> Inspect Proof
                   </button>
+                </div>
+              ) : (approvingMatchItem.match.isDoubleForfeit || approvingMatchItem.match.isSingleForfeit) ? (
+                <div className="pt-2 border-t border-slate-800 text-[11px] text-amber-300 bg-amber-500/10 p-2 rounded-lg border border-amber-500/20">
+                  <span className="font-bold flex items-center gap-1">
+                    <Ban className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                    Forfeit Resolution (Exempt from screenshot proof)
+                  </span>
+                  <p className="text-[10px] text-amber-300/80 mt-0.5">
+                    This match was resolved as an administrative forfeit. Approving this certifies the forfeit ruling in official league records.
+                  </p>
                 </div>
               ) : (
                 <div className="pt-2 border-t border-slate-800 text-[11px] text-rose-300 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">

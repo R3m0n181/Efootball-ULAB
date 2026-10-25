@@ -128,18 +128,11 @@ export function subscribeToLeagueState(
           let rawMatchesList = data.matches || [];
           let currentConfig = data.config || INITIAL_CONFIG;
 
-          // Reorganize and squeeze 1st leg into MD 1-19 (10 matches/MD, 0 overlaps) and ensure 2nd leg is MD 20-38 unplayed
-          const squeezed = squeezeFirstLegAndCleanSecondLeg(
-            rawMatchesList,
-            updatedTeams,
-            currentConfig
-          );
-
           const state: StoredState = {
             teams: updatedTeams,
-            matches: squeezed.matches,
-            config: squeezed.config,
-            byesPerRound: squeezed.byesPerRound || {},
+            matches: rawMatchesList,
+            config: currentConfig,
+            byesPerRound: data.byesPerRound || {},
           };
 
           // Also cache locally for seamless offline fallback
